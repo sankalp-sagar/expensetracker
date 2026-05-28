@@ -9,9 +9,13 @@ spring:
     username: ${DB_USER:splitwise}
     password: ${DB_PASS:splitwise}
   jpa:
-    hibernate.ddl-auto: update
+    hibernate.ddl-auto: validate
     properties.hibernate.dialect: org.hibernate.dialect.PostgreSQLDialect
     open-in-view: false
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    locations: classpath:db/migration
   data.redis:
     host: ${REDIS_HOST:localhost}
     port: ${REDIS_PORT:6379}
@@ -35,6 +39,15 @@ app:
   storage:
     provider: ${STORAGE_PROVIDER:local}     # local | s3
     local-dir: ${STORAGE_LOCAL_DIR:/app/uploads}
+    s3:
+      bucket: ${AWS_S3_BUCKET:}
+      region: ${AWS_REGION:us-east-1}
+      presigned-ttl-seconds: 600
+  ocr:
+    provider: ${OCR_PROVIDER:none}          # none | tesseract
+    tesseract:
+      data-path: ${TESSDATA_PREFIX:/usr/share/tesseract-ocr/5/tessdata}
+      language: ${OCR_LANGUAGE:eng}
   feature-flags:
     multi-currency-enabled: true
     recurring-expenses-enabled: true

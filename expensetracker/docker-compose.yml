@@ -189,6 +189,10 @@ services:
       REDIS_HOST: redis
       JWT_SECRET: ${JWT_SECRET:-change-me-in-production-must-be-very-long-secret-key-256-bits}
       ZIPKIN_URL: http://zipkin:9411/api/v2/spans
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      OAUTH2_REDIRECT_BASE: ${OAUTH2_REDIRECT_BASE:-http://localhost:8081}
+      OAUTH2_SUCCESS_REDIRECT: ${OAUTH2_SUCCESS_REDIRECT:-http://localhost:3000/oauth2/callback}
     networks: [splitnet]
 
   user-service:
@@ -243,6 +247,13 @@ services:
       REDIS_HOST: redis
       JWT_SECRET: ${JWT_SECRET:-change-me-in-production-must-be-very-long-secret-key-256-bits}
       ZIPKIN_URL: http://zipkin:9411/api/v2/spans
+      STORAGE_PROVIDER: ${STORAGE_PROVIDER:-local}
+      AWS_S3_BUCKET: ${AWS_S3_BUCKET:-}
+      AWS_REGION: ${AWS_REGION:-us-east-1}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
+      OCR_PROVIDER: ${OCR_PROVIDER:-none}
+      OCR_LANGUAGE: ${OCR_LANGUAGE:-eng}
     volumes:
       - ./uploads:/app/uploads
     networks: [splitnet]

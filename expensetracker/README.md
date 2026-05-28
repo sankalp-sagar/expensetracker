@@ -6,6 +6,41 @@ Production-grade microservices system for splitting bills, tracking debts, and s
 
 ---
 
+## What's New (P1 + P2 iteration · 2026-02-28)
+
+| | |
+|---|---|
+| Flyway migrations  | `V1__init.sql` per service · `ddl-auto=validate` · `baseline-on-migrate=true` |
+| Testcontainers IT  | `AuthServiceIntegrationTest` — register → DB → Kafka `user.registered` end-to-end |
+| WebSocket live UI  | `useBalanceSocket` hook subscribes to `/topic/balances/{groupId}` on settlement-service |
+| S3 storage         | `S3FileStorageProvider` activated by `STORAGE_PROVIDER=s3` (uses AWS default credential chain) |
+| OCR pipeline       | Pluggable `OcrProvider` · `NoOpOcrProvider` (default) · `TesseractOcrProvider` (when `OCR_PROVIDER=tesseract`); async-extracts text on receipt upload |
+| Google OAuth2      | `spring-boot-starter-oauth2-client` in auth-service; redirects to `/oauth2/callback` on the frontend with tokens in URL fragment. Set `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` to enable |
+
+### Enabling optional features
+
+```bash
+# .env additions (all optional)
+STORAGE_PROVIDER=s3
+AWS_S3_BUCKET=my-receipts
+AWS_REGION=us-east-1
+AWS_ACCESS_KEY_ID=...
+AWS_SECRET_ACCESS_KEY=...
+
+OCR_PROVIDER=tesseract
+
+GOOGLE_CLIENT_ID=...
+GOOGLE_CLIENT_SECRET=...
+# Add http://localhost:8081/login/oauth2/code/google to authorized redirect URIs
+```
+
+For the React frontend to show the Google button, set in `/app/frontend/.env`:
+```
+REACT_APP_GOOGLE_OAUTH_ENABLED=true
+```
+
+---
+
 ## Architecture
 
 ```

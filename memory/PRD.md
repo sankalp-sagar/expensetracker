@@ -30,6 +30,23 @@ Build a production-grade distributed expense sharing and settlement platform usi
 
 ## What's been implemented (2026-02-28)
 
+### Iteration 2 — P1 + P2 (this run)
+- ✅ **Flyway migrations**: `V1__init.sql` per service; `ddl-auto=validate`; `baseline-on-migrate=true`; common-lib bundles `flyway-core` + `flyway-database-postgresql`
+- ✅ **Testcontainers integration test**: `AuthServiceIntegrationTest` boots Postgres + Kafka + Redis containers, calls `POST /api/auth/register` via MockMvc, asserts DB persistence + Kafka `user.registered` event + login round-trip
+- ✅ **WebSocket subscribe in frontend**: `useBalanceSocket` hook + live indicator on `GroupDetailPage` re-fetches suggestions on every push from settlement-service
+- ✅ **S3 storage provider**: `S3FileStorageProvider` activated by `STORAGE_PROVIDER=s3`, presigned URLs, AWS default credential chain
+- ✅ **OCR pipeline**: pluggable `OcrProvider` (`NoOpOcrProvider` default · `TesseractOcrProvider` when `OCR_PROVIDER=tesseract`); Tesseract installed only in expense-service Docker image; OCR extracts text synchronously on receipt upload and persists to `Receipt.ocrText`
+- ✅ **Google OAuth2**: `spring-boot-starter-oauth2-client` in auth-service; conditional registration only when `GOOGLE_CLIENT_ID` is set; success handler issues our standard JWT pair and redirects to `/oauth2/callback` on the frontend with tokens in URL fragment; React `OAuth2CallbackPage` consumes them
+- ✅ Docker base swapped Alpine → Debian-slim for better Tess4j JNI compatibility
+- ✅ Updated `.env.example`, `docker-compose.yml`, README with all new env vars
+
+### Iteration 1 — MVP (previous run)
+- All 8 microservices + infra + frontend dashboard + K8s + Postman (see history above)
+
+## File count
+- **144 total files** in `/app/expensetracker`
+- 7 Flyway V1 migrations · 3 new OCR classes · 2 new auth classes (OAuth2 handler + updated SecurityConfig) · 1 new storage provider · 1 new frontend hook · 1 new frontend page
+
 ### Backend (Java 21, Spring Boot 3.4.1, Spring Cloud 2024.0.0)
 - ✅ Parent Maven POM with managed dependency versions
 - ✅ `common-lib`: JwtUtil, JwtAuthenticationFilter, CorrelationIdFilter, ApiResponse, GlobalExceptionHandler, AuditableEntity, Event DTOs, Kafka topic constants

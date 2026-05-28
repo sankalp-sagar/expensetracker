@@ -1,9 +1,10 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { toast } from "sonner";
 import { groupsApi, expensesApi, settlementsApi } from "@/lib/services";
 import { useAuth } from "@/lib/auth";
-import { ArrowLeft, Plus, Copy, Zap } from "lucide-react";
+import { useBalanceSocket } from "@/lib/useBalanceSocket";
+import { ArrowLeft, Plus, Copy, Zap, Radio } from "lucide-react";
 import ExpenseFormDialog from "@/components/ExpenseFormDialog";
 import SettleUpDialog from "@/components/SettleUpDialog";
 
@@ -17,6 +18,7 @@ export default function GroupDetailPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [settleOpen, setSettleOpen] = useState(false);
   const [activeSuggestion, setActiveSuggestion] = useState(null);
+  const [liveTick, setLiveTick] = useState(0);
 
   const load = async () => {
     try {
@@ -36,6 +38,17 @@ export default function GroupDetailPage() {
   };
 
   useEffect(() => { load(); }, [groupId]);
+
+  // Live balance updates over WebSocket — settlement-service broadcasts every time balances change
+  const onLiveBalance = useCallback((payload) => {
+    if (Array.isArray(payload)) {
+      setBalances(payload);
+      setLiveTick((n) => n + 1);
+      // re-fetch suggestions because they depend on balances
+      settlementsApi.suggestions(groupId).then(setSuggestions).catch(() => {});
+    }
+  }, [groupId]);
+  useBalanceSocket(groupId, onLiveBalance);
 
   const copyInvite = () => {
     if (!group?.inviteCode) return;
@@ -116,8 +129,12 @@ export default function GroupDetailPage() {
 
       {/* Balances */}
       <div className="border border-zinc-200 bg-white rounded-sm" data-testid="balances-card">
-        <div className="px-6 py-4 border-b border-zinc-200">
+        <div className="px-6 py-4 border-b border-zinc-200 flex items-center justify-between">
           <h2 className="font-display font-bold text-lg text-zinc-950">Pairwise balances</h2>
+          <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-wider text-zinc-500 font-mono" data-testid="live-indicator">
+            <Radio size={10} className={liveTick > 0 ? "text-[#30A46C] animate-pulse" : "text-zinc-400"} />
+            <span>{liveTick > 0 ? `live · ${liveTick}` : "live"}</span>
+          </div>
         </div>
         {balances.length === 0 ? (
           <div className="p-6 text-sm text-zinc-500">All settled up · no outstanding balances</div>

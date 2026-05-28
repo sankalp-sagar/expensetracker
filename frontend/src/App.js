@@ -3,6 +3,7 @@ import { Toaster } from "sonner";
 import { AuthProvider, useAuth } from "@/lib/auth";
 import LoginPage from "@/pages/LoginPage";
 import RegisterPage from "@/pages/RegisterPage";
+import OAuth2CallbackPage from "@/pages/OAuth2CallbackPage";
 import DashboardPage from "@/pages/DashboardPage";
 import GroupsPage from "@/pages/GroupsPage";
 import GroupDetailPage from "@/pages/GroupDetailPage";
@@ -30,6 +31,7 @@ export default function App() {
         <Routes>
           <Route path="/login" element={<PublicOnly><LoginPage /></PublicOnly>} />
           <Route path="/register" element={<PublicOnly><RegisterPage /></PublicOnly>} />
+          <Route path="/oauth2/callback" element={<OAuth2CallbackPage />} />
           <Route element={<Private><AppLayout /></Private>}>
             <Route path="/" element={<DashboardPage />} />
             <Route path="/groups" element={<GroupsPage />} />

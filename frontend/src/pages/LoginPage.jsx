@@ -95,6 +95,24 @@ export default function LoginPage() {
             {loading ? "Signing in…" : "Sign in"}
           </button>
 
+          {process.env.REACT_APP_GOOGLE_OAUTH_ENABLED === "true" && (
+            <>
+              <div className="relative my-2">
+                <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-zinc-200" /></div>
+                <div className="relative flex justify-center text-[10px] uppercase tracking-wider font-mono">
+                  <span className="bg-white px-2 text-zinc-500">or</span>
+                </div>
+              </div>
+              <a
+                href={`${process.env.REACT_APP_API_BASE || "http://localhost:8080"}/oauth2/authorization/google`}
+                data-testid="google-login-button"
+                className="w-full block text-center bg-white border border-zinc-300 hover:bg-zinc-50 text-zinc-950 font-medium text-sm py-2.5 rounded-sm transition-all hover:-translate-y-[1px]"
+              >
+                Continue with Google
+              </a>
+            </>
+          )}
+
           <div className="text-sm text-zinc-500">
             New here?{" "}
             <Link to="/register" data-testid="link-register" className="text-[#0055FF] hover:underline font-medium">
