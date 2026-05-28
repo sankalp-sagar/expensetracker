@@ -29,7 +29,7 @@ export default function LoginPage() {
             expense<span className="text-[#3D7BFF]">tracker</span>
           </div>
           <div className="text-[11px] uppercase tracking-[0.2em] text-zinc-400 mt-1 font-mono">
-            distributed expense settlement platform
+            expense settlement platform
           </div>
         </div>
         <div className="space-y-6 max-w-md">
@@ -38,15 +38,13 @@ export default function LoginPage() {
             <span className="text-[#3D7BFF]">At any scale.</span>
           </h1>
           <p className="text-zinc-400 leading-relaxed text-sm">
-            8 microservices · Spring Cloud Gateway · Kafka event-driven · PostgreSQL per service · debt minimisation algorithm · real-time balances over WebSocket.
+            Debt minimisation algorithm · Real-time balances.
           </p>
         </div>
         <div className="flex gap-6 font-mono text-[11px] text-zinc-500 uppercase tracking-wider">
-          <div>java 21</div>
-          <div>spring boot 3.4</div>
-          <div>kafka</div>
-          <div>postgres</div>
-          <div>redis</div>
+          <div>calculate</div>
+          <div>plan</div>
+          <div>save</div>
         </div>
       </div>
 
