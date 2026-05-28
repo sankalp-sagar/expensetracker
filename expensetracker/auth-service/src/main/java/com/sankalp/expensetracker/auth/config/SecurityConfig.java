@@ -1,10 +1,10 @@
 package com.sankalp.expensetracker.auth.config;
 
 import com.sankalp.expensetracker.auth.service.OAuth2LoginSuccessHandler;
-import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -13,13 +13,17 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 
 @Configuration
-@RequiredArgsConstructor
 public class SecurityConfig {
 
     private final OAuth2LoginSuccessHandler oauth2SuccessHandler;
 
     @Value("${spring.security.oauth2.client.registration.google.client-id:}")
     private String googleClientId;
+
+    // constructor with @Lazy to break cycle
+    public SecurityConfig(@Lazy OAuth2LoginSuccessHandler oauth2SuccessHandler) {
+        this.oauth2SuccessHandler = oauth2SuccessHandler;
+    }
 
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -48,7 +52,6 @@ public class SecurityConfig {
                         ).permitAll()
                         .anyRequest().authenticated());
 
-        // Only register the OAuth2 flow if a client is configured — otherwise Spring would 404.
         if (googleClientId != null && !googleClientId.isBlank()) {
             http.oauth2Login(o -> o
                     .loginPage("/api/auth/oauth2/google")
