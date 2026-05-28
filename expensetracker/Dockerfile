@@ -3,10 +3,23 @@
 FROM maven:3.9.9-eclipse-temurin-21 AS build
 ARG MODULE
 WORKDIR /workspace
+
+# Copy only the files needed for the build
 COPY pom.xml ./
 COPY common-lib ./common-lib
 COPY ${MODULE} ./${MODULE}
-# Build only the requested module + its dependencies (common-lib)
+
+# Create dummy POMs for all modules except the one being built
+# This satisfies Maven's reactor requirement without actually compiling them
+RUN for mod in eureka-server config-server api-gateway auth-service user-service \
+    group-service expense-service settlement-service notification-service analytics-service; do \
+    if [ "$mod" != "${MODULE}" ] && [ "$mod" != "common-lib" ]; then \
+        mkdir -p "$mod" && \
+        echo '<project><modelVersion>4.0.0</modelVersion><groupId>com.sankalp.expensetracker</groupId><artifactId>'"$mod"'</artifactId><version>1.0.0</version><packaging>jar</packaging></project>' > "$mod/pom.xml"; \
+    fi; \
+done
+
+# Now build only the requested module and its dependency (common-lib)
 RUN mvn -B -DskipTests -pl common-lib,${MODULE} -am install
 
 # Debian-slim runtime (better JNI compatibility than Alpine for Tess4j when OCR is enabled)
