@@ -36,9 +36,9 @@ public class JwtAuthGatewayFilter implements GlobalFilter, Ordered {
 
     public JwtAuthGatewayFilter(
             @Value("${app.jwt.secret}") String secret,
-            @Value("${app.security.public-paths}") List<String> publicPaths) {
+            @Value("${app.security.public-paths}") String publicPathsStr) {
         this.key = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
-        this.publicPaths = publicPaths;
+        this.publicPaths = List.of(publicPathsStr.split(","));
     }
 
     @Override
