@@ -1,0 +1,86 @@
+{
+  "theme": "light",
+  "archetype": "Archetype 4 (Swiss & High-Contrast)",
+  "typography": {
+    "headings": {
+      "fontFamily": "Cabinet Grotesk",
+      "weights": ["font-bold", "font-black"],
+      "tracking": "tracking-tight",
+      "usage": "Use for all main headers (H1, H2, H3). Never use Inter or Roboto for headings."
+    },
+    "body": {
+      "fontFamily": "IBM Plex Sans",
+      "weights": ["font-normal", "font-medium"],
+      "usage": "Standard UI text, paragraphs, labels."
+    },
+    "numbers_and_amounts": {
+      "fontFamily": "JetBrains Mono",
+      "weights": ["font-medium", "font-semibold"],
+      "usage": "CRITICAL: Use for all financial amounts, balances, and dates to provide a technical, precise numeric personality."
+    },
+    "notes": "Maintain a confident, left-aligned hierarchy. Avoid generic center alignment for layout containers."
+  },
+  "colors": {
+    "background": "bg-[#F7F7F6]",
+    "surface": "bg-white",
+    "text_primary": "text-zinc-950",
+    "text_secondary": "text-zinc-500",
+    "accent_primary": "bg-[#0055FF]",
+    "accent_primary_hover": "hover:bg-[#0044CC]",
+    "expense_red_text": "text-[#E5484D]",
+    "expense_red_bg": "bg-[#E5484D]/10",
+    "settlement_green_text": "text-[#30A46C]",
+    "settlement_green_bg": "bg-[#30A46C]/10",
+    "borders": "border-zinc-200",
+    "forbidden": ["purple", "violet", "teal", "gradients"]
+  },
+  "layout_and_spacing": {
+    "strategy": "The 'Control Room' Grid & Grid Borders",
+    "padding": "Generous padding inside sections (p-6, p-8). Keep gaps tight (gap-4, gap-6) in tabular structures to maximize data density.",
+    "border_radius": "rounded-sm (2px) or rounded-none for a sharp, architectural, non-bubbly feel.",
+    "alignment": "Left-align all paragraphs, labels, and tabular data. Align financial amounts to the right in table cells for decimal alignment."
+  },
+  "components": {
+    "buttons": "Sharp edges (rounded-sm), high contrast. Primary: bg-[#0055FF] text-white. Secondary: bg-white border border-zinc-200 text-zinc-950 hover:bg-zinc-50.",
+    "cards_and_panels": "Cardless or flat cards with 1px border-zinc-200, no drop shadows. Background: bg-white.",
+    "lists_and_tables": "Heavy use of border-b (border-zinc-200) for lists instead of wrapping every item in a card. Hover states on rows (hover:bg-zinc-50).",
+    "modals": "Backdrop blur (backdrop-blur-md bg-white/70) with a sharp, 1px bordered modal container.",
+    "charts": "Recharts or Shadcn Charts. Minimalist lines or bars using the accent color (#0055FF), without heavy grid lines."
+  },
+  "motion_and_interactions": {
+    "hover_states": "Crisp transitions. hover:bg-zinc-50 for lists. hover:-translate-y-[1px] for buttons.",
+    "feedback": "Use sonner for clean, crisp toast notifications.",
+    "accessibility": "Ensure all interactive states have distinct contrast."
+  },
+  "media_and_assets": {
+    "icons": "lucide-react",
+    "image_urls": [
+      {
+        "category": "auth_background",
+        "url": "https://images.unsplash.com/photo-1454117096348-e4abbeba002c?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NTYxODd8MHwxfHNlYXJjaHwyfHxhYnN0cmFjdCUyMGNsZWFuJTIwYXJjaGl0ZWN0dXJhbCUyMGdlb21ldHJ5JTIwd2hpdGV8ZW58MHx8fHwxNzc5OTg0OTYyfDA&ixlib=rb-4.1.0&q=85",
+        "description": "Abstract clean architectural geometry white, use as subtle background for login/register layout."
+      },
+      {
+        "category": "user_avatar_1",
+        "url": "https://images.unsplash.com/photo-1506863530036-1efeddceb993?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjY2NzN8MHwxfHNlYXJjaHwzfHxwcm9mZXNzaW9uYWwlMjBwb3J0cmFpdCUyMGhlYWRzaG90fGVufDB8fHx8MTc3OTk4NDk2Mnww&ixlib=rb-4.1.0&q=85",
+        "description": "Grayscale portrait for friend/group member avatar."
+      },
+      {
+        "category": "user_avatar_2",
+        "url": "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjY2NzN8MHwxfHNlYXJjaHwxfHxwcm9mZXNzaW9uYWwlMjBwb3J0cmFpdCUyMGhlYWRzaG90fGVufDB8fHx8MTc3OTk4NDk2Mnww&ixlib=rb-4.1.0&q=85",
+        "description": "Portrait for friend/group member avatar."
+      }
+    ]
+  },
+  "testing_requirements": {
+    "data_testid": "CRITICAL: All interactive and key informational elements MUST include a data-testid attribute in kebab-case (e.g., data-testid='login-submit-button')."
+  },
+  "instructions_to_main_agent": [
+    "Install custom fonts (Cabinet Grotesk, IBM Plex Sans, JetBrains Mono) via Google Fonts or standard CSS imports in index.css.",
+    "Apply Archetype 4 (Swiss & High-Contrast) strictly. Strictly avoid all purple/violet shades. Stick to Zinc neutrals and the single strong Cobalt Blue accent (#0055FF).",
+    "Use data-centric, tabular styling for expense lists. Avoid generic 'card grids' for expenses. Use border-b lists to maximize clarity and 'developer-portfolio-quality' minimalism.",
+    "Format all money values and dates using the JetBrains Mono font for a precise, technical feel.",
+    "Ensure the entire UI feels 'tasteful, modern, restrained, professional'. The personality comes from layout structure, typography contrast, and numeric formatting, not from colorful gradients.",
+    "Do NOT use HTML-based components for advanced user interactions; utilize Shadcn UI components heavily customized with these sharp, border-heavy styling rules."
+  ]
+}

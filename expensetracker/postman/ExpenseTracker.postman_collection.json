@@ -1,0 +1,153 @@
+{
+  "info": {
+    "name": "ExpenseTracker — Distributed Platform",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Complete API surface for the distributed expense-sharing platform."
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8080" },
+    { "key": "accessToken", "value": "" },
+    { "key": "refreshToken", "value": "" },
+    { "key": "userId", "value": "" },
+    { "key": "groupId", "value": "" },
+    { "key": "expenseId", "value": "" }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }]
+  },
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Register",
+          "event": [{
+            "listen": "test",
+            "script": { "type": "text/javascript", "exec": [
+              "const r = pm.response.json().data;",
+              "pm.collectionVariables.set('accessToken', r.accessToken);",
+              "pm.collectionVariables.set('refreshToken', r.refreshToken);",
+              "pm.collectionVariables.set('userId', r.userId);"
+            ]}
+          }],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/auth/register",
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"alice@example.com\",\n  \"password\": \"Password123!\",\n  \"fullName\": \"Alice\"\n}" }
+          }
+        },
+        {
+          "name": "Login",
+          "event": [{
+            "listen": "test",
+            "script": { "type": "text/javascript", "exec": [
+              "const r = pm.response.json().data;",
+              "pm.collectionVariables.set('accessToken', r.accessToken);",
+              "pm.collectionVariables.set('refreshToken', r.refreshToken);",
+              "pm.collectionVariables.set('userId', r.userId);"
+            ]}
+          }],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/auth/login",
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"alice@example.com\",\n  \"password\": \"Password123!\"\n}" }
+          }
+        },
+        {
+          "name": "Refresh Token",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/auth/refresh",
+            "body": { "mode": "raw", "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}" }
+          }
+        },
+        {
+          "name": "Logout",
+          "request": { "method": "POST", "url": "{{baseUrl}}/api/auth/logout" }
+        }
+      ]
+    },
+    {
+      "name": "Users",
+      "item": [
+        { "name": "Get My Profile", "request": { "method": "GET", "url": "{{baseUrl}}/api/users/me" } },
+        { "name": "Update Profile", "request": { "method": "PUT", "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/users/me",
+            "body": { "mode": "raw", "raw": "{\n  \"statusMessage\": \"Loving it\",\n  \"preferredCurrency\": \"USD\"\n}" }}},
+        { "name": "Search Users", "request": { "method": "GET", "url": "{{baseUrl}}/api/users/search?q=alice" } }
+      ]
+    },
+    {
+      "name": "Groups",
+      "item": [
+        {
+          "name": "Create Group",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.collectionVariables.set('groupId', pm.response.json().data.id);"
+          ]}}],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/groups",
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Roommates\",\n  \"defaultCurrency\": \"USD\"\n}" }
+          }
+        },
+        { "name": "List My Groups", "request": { "method": "GET", "url": "{{baseUrl}}/api/groups/me" } },
+        { "name": "Join By Invite Code", "request": { "method": "POST", "url": "{{baseUrl}}/api/groups/join/ABCD1234" } }
+      ]
+    },
+    {
+      "name": "Expenses",
+      "item": [
+        {
+          "name": "Create Expense (Equal Split)",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.collectionVariables.set('expenseId', pm.response.json().data.id);"
+          ]}}],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/expenses",
+            "body": { "mode": "raw", "raw": "{\n  \"groupId\": \"{{groupId}}\",\n  \"payerId\": \"{{userId}}\",\n  \"description\": \"Pizza\",\n  \"amount\": 60.00,\n  \"currency\": \"USD\",\n  \"splitType\": \"EQUAL\",\n  \"splits\": [\n    {\"userId\": \"{{userId}}\"},\n    {\"userId\": \"00000000-0000-0000-0000-000000000002\"},\n    {\"userId\": \"00000000-0000-0000-0000-000000000003\"}\n  ]\n}" }
+          }
+        },
+        { "name": "List Group Expenses", "request": { "method": "GET", "url": "{{baseUrl}}/api/expenses/group/{{groupId}}" } },
+        { "name": "Get Expense", "request": { "method": "GET", "url": "{{baseUrl}}/api/expenses/{{expenseId}}" } }
+      ]
+    },
+    {
+      "name": "Settlements & Balances",
+      "item": [
+        {
+          "name": "Record Settlement",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/settlements",
+            "body": { "mode": "raw", "raw": "{\n  \"groupId\": \"{{groupId}}\",\n  \"payerId\": \"00000000-0000-0000-0000-000000000002\",\n  \"payeeId\": \"{{userId}}\",\n  \"amount\": 20.00,\n  \"currency\": \"USD\",\n  \"method\": \"CASH\"\n}" }
+          }
+        },
+        { "name": "Group Balances", "request": { "method": "GET", "url": "{{baseUrl}}/api/balances/group/{{groupId}}" } },
+        { "name": "Settlement Suggestions", "request": { "method": "GET", "url": "{{baseUrl}}/api/balances/group/{{groupId}}/suggestions" } }
+      ]
+    },
+    {
+      "name": "Analytics",
+      "item": [
+        { "name": "Monthly Trend", "request": { "method": "GET", "url": "{{baseUrl}}/api/analytics/monthly" } },
+        { "name": "Group Contributions", "request": { "method": "GET", "url": "{{baseUrl}}/api/analytics/group/{{groupId}}/contributions" } }
+      ]
+    },
+    {
+      "name": "Notifications",
+      "item": [
+        { "name": "List Notifications", "request": { "method": "GET", "url": "{{baseUrl}}/api/notifications" } },
+        { "name": "Unread Count", "request": { "method": "GET", "url": "{{baseUrl}}/api/notifications/unread-count" } }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,92 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: api-gateway
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+  cloud:
+    gateway:
+      discovery:
+        locator:
+          enabled: false
+      default-filters:
+        - DedupeResponseHeader=Access-Control-Allow-Credentials Access-Control-Allow-Origin
+      globalcors:
+        cors-configurations:
+          '[/**]':
+            allowed-origin-patterns: "*"
+            allowed-methods: [GET, POST, PUT, PATCH, DELETE, OPTIONS]
+            allowed-headers: "*"
+            exposed-headers: [Authorization, X-Correlation-Id]
+            allow-credentials: true
+      routes:
+        - id: auth-service
+          uri: lb://auth-service
+          predicates:
+            - Path=/api/auth/**
+          filters:
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 20
+                redis-rate-limiter.burstCapacity: 40
+                key-resolver: "#{@ipKeyResolver}"
+        - id: user-service
+          uri: lb://user-service
+          predicates:
+            - Path=/api/users/**
+        - id: group-service
+          uri: lb://group-service
+          predicates:
+            - Path=/api/groups/**
+        - id: expense-service
+          uri: lb://expense-service
+          predicates:
+            - Path=/api/expenses/**,/api/categories/**,/api/receipts/**
+        - id: settlement-service
+          uri: lb://settlement-service
+          predicates:
+            - Path=/api/settlements/**,/api/balances/**
+        - id: notification-service
+          uri: lb://notification-service
+          predicates:
+            - Path=/api/notifications/**
+        - id: analytics-service
+          uri: lb://analytics-service
+          predicates:
+            - Path=/api/analytics/**
+
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_URL:http://localhost:8761/eureka}
+  instance:
+    prefer-ip-address: true
+
+app:
+  jwt:
+    secret: ${JWT_SECRET:change-me-in-production-must-be-very-long-secret-key-256-bits}
+  security:
+    public-paths:
+      - /api/auth/register
+      - /api/auth/login
+      - /api/auth/refresh
+      - /api/auth/verify-email
+      - /actuator/**
+      - /v3/api-docs/**
+      - /swagger-ui/**
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus,gateway
+  tracing:
+    sampling:
+      probability: 1.0
+  zipkin:
+    tracing:
+      endpoint: ${ZIPKIN_URL:http://localhost:9411/api/v2/spans}

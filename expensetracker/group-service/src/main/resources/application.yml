@@ -1,0 +1,35 @@
+server:
+  port: 8083
+
+spring:
+  application:
+    name: group-service
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5435/groupdb}
+    username: ${DB_USER:splitwise}
+    password: ${DB_PASS:splitwise}
+  jpa:
+    hibernate.ddl-auto: update
+    properties.hibernate.dialect: org.hibernate.dialect.PostgreSQLDialect
+    open-in-view: false
+  data.redis:
+    host: ${REDIS_HOST:localhost}
+    port: ${REDIS_PORT:6379}
+  kafka:
+    bootstrap-servers: ${KAFKA_BROKERS:localhost:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+  cloud.config.enabled: false
+
+eureka:
+  client.service-url.defaultZone: ${EUREKA_URL:http://localhost:8761/eureka}
+  instance.prefer-ip-address: true
+
+app:
+  jwt.secret: ${JWT_SECRET:change-me-in-production-must-be-very-long-secret-key-256-bits}
+
+management:
+  endpoints.web.exposure.include: health,info,prometheus,metrics
+  tracing.sampling.probability: 1.0
+  zipkin.tracing.endpoint: ${ZIPKIN_URL:http://localhost:9411/api/v2/spans}

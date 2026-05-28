@@ -1,0 +1,42 @@
+server:
+  port: 8086
+
+spring:
+  application:
+    name: notification-service
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5438/notificationdb}
+    username: ${DB_USER:splitwise}
+    password: ${DB_PASS:splitwise}
+  jpa:
+    hibernate.ddl-auto: update
+    properties.hibernate.dialect: org.hibernate.dialect.PostgreSQLDialect
+    open-in-view: false
+  kafka:
+    bootstrap-servers: ${KAFKA_BROKERS:localhost:9092}
+    consumer:
+      group-id: notification-service
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: "com.sankalp.expensetracker.common.events"
+  mail:
+    host: ${MAIL_HOST:localhost}
+    port: ${MAIL_PORT:1025}
+  cloud.config.enabled: false
+
+eureka:
+  client.service-url.defaultZone: ${EUREKA_URL:http://localhost:8761/eureka}
+  instance.prefer-ip-address: true
+
+app:
+  jwt.secret: ${JWT_SECRET:change-me-in-production-must-be-very-long-secret-key-256-bits}
+  mail:
+    from: no-reply@expensetracker.local
+    enabled: ${MAIL_ENABLED:false}
+
+management:
+  endpoints.web.exposure.include: health,info,prometheus,metrics
+  tracing.sampling.probability: 1.0
+  zipkin.tracing.endpoint: ${ZIPKIN_URL:http://localhost:9411/api/v2/spans}

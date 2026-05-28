@@ -1,0 +1,16 @@
+target/
+**/target/
+*.class
+*.jar
+*.war
+*.log
+.mvn/
+.idea/
+*.iml
+.vscode/
+.DS_Store
+.env
+uploads/
+node_modules/
+build/
+dist/

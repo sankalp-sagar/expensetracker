@@ -1,0 +1,6 @@
+# Shared application defaults (Spring Cloud Config native server)
+app:
+  feature-flags:
+    multi-currency-enabled: true
+    ocr-receipts-enabled: false
+    recurring-expenses-enabled: true

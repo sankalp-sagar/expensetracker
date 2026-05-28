@@ -1,0 +1,27 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: expensetracker
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: expensetracker-config
+  namespace: expensetracker
+data:
+  EUREKA_URL: "http://eureka-server:8761/eureka"
+  KAFKA_BROKERS: "kafka:9092"
+  REDIS_HOST: "redis"
+  REDIS_PORT: "6379"
+  ZIPKIN_URL: "http://zipkin:9411/api/v2/spans"
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: expensetracker-secrets
+  namespace: expensetracker
+type: Opaque
+stringData:
+  JWT_SECRET: "change-me-in-production-must-be-very-long-secret-key-256-bits"
+  DB_USER: "splitwise"
+  DB_PASS: "splitwise"

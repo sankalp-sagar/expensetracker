@@ -1,0 +1,171 @@
+# Business service deployments. Each is stateless and horizontally scalable.
+# Replace the image: tag with your container registry path after `docker build`.
+
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: auth-service, namespace: expensetracker }
+spec:
+  replicas: 2
+  selector: { matchLabels: { app: auth-service } }
+  template:
+    metadata: { labels: { app: auth-service } }
+    spec:
+      containers:
+        - name: auth-service
+          image: expensetracker/auth-service:1.0.0
+          ports: [{ containerPort: 8081 }]
+          env:
+            - { name: DB_URL, value: "jdbc:postgresql://postgres-auth:5432/authdb" }
+          envFrom:
+            - configMapRef: { name: expensetracker-config }
+            - secretRef: { name: expensetracker-secrets }
+          readinessProbe: { httpGet: { path: /actuator/health, port: 8081 }, initialDelaySeconds: 40 }
+---
+apiVersion: v1
+kind: Service
+metadata: { name: auth-service, namespace: expensetracker }
+spec: { selector: { app: auth-service }, ports: [{ port: 8081, targetPort: 8081 }] }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: user-service, namespace: expensetracker }
+spec:
+  replicas: 2
+  selector: { matchLabels: { app: user-service } }
+  template:
+    metadata: { labels: { app: user-service } }
+    spec:
+      containers:
+        - name: user-service
+          image: expensetracker/user-service:1.0.0
+          ports: [{ containerPort: 8082 }]
+          env:
+            - { name: DB_URL, value: "jdbc:postgresql://postgres-user:5432/userdb" }
+          envFrom:
+            - configMapRef: { name: expensetracker-config }
+            - secretRef: { name: expensetracker-secrets }
+---
+apiVersion: v1
+kind: Service
+metadata: { name: user-service, namespace: expensetracker }
+spec: { selector: { app: user-service }, ports: [{ port: 8082, targetPort: 8082 }] }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: group-service, namespace: expensetracker }
+spec:
+  replicas: 2
+  selector: { matchLabels: { app: group-service } }
+  template:
+    metadata: { labels: { app: group-service } }
+    spec:
+      containers:
+        - name: group-service
+          image: expensetracker/group-service:1.0.0
+          ports: [{ containerPort: 8083 }]
+          env:
+            - { name: DB_URL, value: "jdbc:postgresql://postgres-group:5432/groupdb" }
+          envFrom:
+            - configMapRef: { name: expensetracker-config }
+            - secretRef: { name: expensetracker-secrets }
+---
+apiVersion: v1
+kind: Service
+metadata: { name: group-service, namespace: expensetracker }
+spec: { selector: { app: group-service }, ports: [{ port: 8083, targetPort: 8083 }] }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: expense-service, namespace: expensetracker }
+spec:
+  replicas: 2
+  selector: { matchLabels: { app: expense-service } }
+  template:
+    metadata: { labels: { app: expense-service } }
+    spec:
+      containers:
+        - name: expense-service
+          image: expensetracker/expense-service:1.0.0
+          ports: [{ containerPort: 8084 }]
+          env:
+            - { name: DB_URL, value: "jdbc:postgresql://postgres-expense:5432/expensedb" }
+          envFrom:
+            - configMapRef: { name: expensetracker-config }
+            - secretRef: { name: expensetracker-secrets }
+---
+apiVersion: v1
+kind: Service
+metadata: { name: expense-service, namespace: expensetracker }
+spec: { selector: { app: expense-service }, ports: [{ port: 8084, targetPort: 8084 }] }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: settlement-service, namespace: expensetracker }
+spec:
+  replicas: 2
+  selector: { matchLabels: { app: settlement-service } }
+  template:
+    metadata: { labels: { app: settlement-service } }
+    spec:
+      containers:
+        - name: settlement-service
+          image: expensetracker/settlement-service:1.0.0
+          ports: [{ containerPort: 8085 }]
+          env:
+            - { name: DB_URL, value: "jdbc:postgresql://postgres-settlement:5432/settlementdb" }
+          envFrom:
+            - configMapRef: { name: expensetracker-config }
+            - secretRef: { name: expensetracker-secrets }
+---
+apiVersion: v1
+kind: Service
+metadata: { name: settlement-service, namespace: expensetracker }
+spec: { selector: { app: settlement-service }, ports: [{ port: 8085, targetPort: 8085 }] }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: notification-service, namespace: expensetracker }
+spec:
+  replicas: 2
+  selector: { matchLabels: { app: notification-service } }
+  template:
+    metadata: { labels: { app: notification-service } }
+    spec:
+      containers:
+        - name: notification-service
+          image: expensetracker/notification-service:1.0.0
+          ports: [{ containerPort: 8086 }]
+          env:
+            - { name: DB_URL, value: "jdbc:postgresql://postgres-notification:5432/notificationdb" }
+          envFrom:
+            - configMapRef: { name: expensetracker-config }
+            - secretRef: { name: expensetracker-secrets }
+---
+apiVersion: v1
+kind: Service
+metadata: { name: notification-service, namespace: expensetracker }
+spec: { selector: { app: notification-service }, ports: [{ port: 8086, targetPort: 8086 }] }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: analytics-service, namespace: expensetracker }
+spec:
+  replicas: 2
+  selector: { matchLabels: { app: analytics-service } }
+  template:
+    metadata: { labels: { app: analytics-service } }
+    spec:
+      containers:
+        - name: analytics-service
+          image: expensetracker/analytics-service:1.0.0
+          ports: [{ containerPort: 8087 }]
+          env:
+            - { name: DB_URL, value: "jdbc:postgresql://postgres-analytics:5432/analyticsdb" }
+          envFrom:
+            - configMapRef: { name: expensetracker-config }
+            - secretRef: { name: expensetracker-secrets }
+---
+apiVersion: v1
+kind: Service
+metadata: { name: analytics-service, namespace: expensetracker }
+spec: { selector: { app: analytics-service }, ports: [{ port: 8087, targetPort: 8087 }] }
