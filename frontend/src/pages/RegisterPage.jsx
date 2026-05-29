@@ -18,7 +18,19 @@ export default function RegisterPage() {
       toast.success("Account created");
       nav("/");
     } catch (err) {
-      toast.error(err.response?.data?.message || "Registration failed");
+      const status = err?.response?.status;
+      const data = err?.response?.data;
+
+      let detail = "";
+      if (typeof data === "string") detail = data;
+      else if (data && typeof data === "object") detail = data.message || JSON.stringify(data);
+
+      toast.error(
+        ["Registration failed", status ? `(${status})` : "", detail ? `: ${detail}` : ""]
+          .join(" ")
+          .replace(/\s+/g, " ")
+          .trim()
+      );
     }
   };
 

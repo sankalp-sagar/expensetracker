@@ -66,6 +66,8 @@ app:
     refresh-ttl-ms: 604800000        # 7 days
   oauth2:
     success-redirect: ${OAUTH2_SUCCESS_REDIRECT:http://localhost:3000/oauth2/callback}
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000}
 
 resilience4j:
   circuitbreaker:
