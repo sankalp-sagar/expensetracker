@@ -1,30 +1,98 @@
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useState } from "react";
 import { api } from "./api";
 
 const AuthContext = createContext(null);
 
+function decodeJwtPayload(token) {
+  const [, payload] = token.split(".");
+  if (!payload) throw new Error("Invalid access token");
+
+  const normalized = payload.replace(/-/g, "+").replace(/_/g, "/");
+  const padded = normalized.padEnd(normalized.length + (4 - normalized.length % 4) % 4, "=");
+  const json = decodeURIComponent(
+    atob(padded)
+      .split("")
+      .map((char) => `%${(`00${char.charCodeAt(0).toString(16)}`).slice(-2)}`)
+      .join(""),
+  );
+
+  return JSON.parse(json);
+}
+
+function userFromAccessToken(accessToken, fallbackUserId) {
+  const payload = decodeJwtPayload(accessToken);
+  const userId = payload.sub || fallbackUserId;
+  if (!userId) throw new Error("Access token is missing subject");
+
+  return {
+    userId,
+    email: payload.email || "",
+    fullName: payload.fullName || payload.name || payload.email || "",
+    roles: Array.isArray(payload.roles) ? payload.roles : [],
+  };
+}
+
+function getStoredUser() {
+  const accessToken = localStorage.getItem("accessToken");
+  const rawUser = localStorage.getItem("user");
+  if (rawUser) {
+    try {
+      const storedUser = JSON.parse(rawUser);
+      if (storedUser?.email || !accessToken) return storedUser;
+    } catch {
+      localStorage.removeItem("user");
+    }
+  }
+
+  if (!accessToken) return null;
+
+  try {
+    const user = userFromAccessToken(accessToken);
+    localStorage.setItem("user", JSON.stringify(user));
+    return user;
+  } catch {
+    localStorage.removeItem("accessToken");
+    localStorage.removeItem("refreshToken");
+    return null;
+  }
+}
+
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(() => {
-    const raw = localStorage.getItem("user");
-    return raw ? JSON.parse(raw) : null;
-  });
+  const [user, setUser] = useState(getStoredUser);
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    if (user) localStorage.setItem("user", JSON.stringify(user));
-    else localStorage.removeItem("user");
-  }, [user]);
+  const storeSession = (tokenResponse) => {
+    localStorage.setItem("accessToken", tokenResponse.accessToken);
+    localStorage.setItem("refreshToken", tokenResponse.refreshToken);
+    const nextUser = {
+      userId: tokenResponse.userId,
+      email: tokenResponse.email,
+      fullName: tokenResponse.fullName,
+      roles: tokenResponse.roles || [],
+    };
+    localStorage.setItem("user", JSON.stringify(nextUser));
+    setUser(nextUser);
+    return nextUser;
+  };
+
+  const completeOAuthLogin = (accessToken, refreshToken, fallbackUserId) => {
+    const nextUser = userFromAccessToken(accessToken, fallbackUserId);
+    localStorage.setItem("accessToken", accessToken);
+    if (refreshToken) {
+      localStorage.setItem("refreshToken", refreshToken);
+    } else {
+      localStorage.removeItem("refreshToken");
+    }
+    localStorage.setItem("user", JSON.stringify(nextUser));
+    setUser(nextUser);
+    return nextUser;
+  };
 
   const login = async (email, password) => {
     setLoading(true);
     try {
       const { data } = await api.post("/api/auth/login", { email, password });
-      const t = data.data;
-      localStorage.setItem("accessToken", t.accessToken);
-      localStorage.setItem("refreshToken", t.refreshToken);
-      const u = { userId: t.userId, email: t.email, fullName: t.fullName, roles: t.roles };
-      setUser(u);
-      return u;
+      return storeSession(data.data);
     } finally {
       setLoading(false);
     }
@@ -34,12 +102,7 @@ export function AuthProvider({ children }) {
     setLoading(true);
     try {
       const { data } = await api.post("/api/auth/register", { email, password, fullName });
-      const t = data.data;
-      localStorage.setItem("accessToken", t.accessToken);
-      localStorage.setItem("refreshToken", t.refreshToken);
-      const u = { userId: t.userId, email: t.email, fullName: t.fullName, roles: t.roles };
-      setUser(u);
-      return u;
+      return storeSession(data.data);
     } finally {
       setLoading(false);
     }
@@ -54,7 +117,7 @@ export function AuthProvider({ children }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, register, completeOAuthLogin, logout }}>
       {children}
     </AuthContext.Provider>
   );

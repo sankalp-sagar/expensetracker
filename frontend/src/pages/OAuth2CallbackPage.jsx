@@ -1,6 +1,13 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
+import { useAuth } from "@/lib/auth";
+
+function getOAuthParam(name) {
+  const fragmentParams = new URLSearchParams(window.location.hash.substring(1));
+  const queryParams = new URLSearchParams(window.location.search.substring(1));
+  return fragmentParams.get(name) || queryParams.get(name);
+}
 
 /**
  * Receives Google OAuth2 redirect from auth-service.
@@ -9,27 +16,31 @@ import { toast } from "sonner";
  */
 export default function OAuth2CallbackPage() {
   const nav = useNavigate();
+  const { completeOAuthLogin } = useAuth();
+  const handled = useRef(false);
 
   useEffect(() => {
-    const fragment = window.location.hash.substring(1);
-    const params = new URLSearchParams(fragment);
-    const access = params.get("access_token");
-    const refresh = params.get("refresh_token");
-    const userId = params.get("user_id");
+    if (handled.current) return;
+    handled.current = true;
 
+    const access = getOAuthParam("access_token");
+    const refresh = getOAuthParam("refresh_token");
+    const userId = getOAuthParam("user_id");
     if (!access) {
       toast.error("Google login failed");
       nav("/login", { replace: true });
       return;
     }
-    localStorage.setItem("accessToken", access);
-    if (refresh) localStorage.setItem("refreshToken", refresh);
-    if (userId) localStorage.setItem("user", JSON.stringify({ userId }));
 
-    toast.success("Signed in with Google");
-    // Reload to let AuthProvider rehydrate the user
-    window.location.href = "/";
-  }, [nav]);
+    try {
+      completeOAuthLogin(access, refresh, userId);
+      toast.success("Signed in with Google");
+      nav("/", { replace: true });
+    } catch {
+      toast.error("Google login failed");
+      nav("/login", { replace: true });
+    }
+  }, [completeOAuthLogin, nav]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-white" data-testid="oauth2-callback">

@@ -127,9 +127,9 @@ public class AuthService {
         return Boolean.TRUE.equals(redis.hasKey(BLACKLIST_PREFIX + token));
     }
 
-    private TokenResponse issueTokens(UserCredential u) {
+    public TokenResponse issueTokens(UserCredential u) {
         List<String> roleNames = u.getRoles().stream().map(Role::getName).toList();
-        String access = jwtUtil.generateAccessToken(u.getId(), u.getEmail(), roleNames);
+        String access = jwtUtil.generateAccessToken(u.getId(), u.getEmail(), u.getFullName(), roleNames);
         String refresh = jwtUtil.generateRefreshToken(u.getId(), u.getEmail());
         RefreshToken r = RefreshToken.builder()
                 .userId(u.getId())

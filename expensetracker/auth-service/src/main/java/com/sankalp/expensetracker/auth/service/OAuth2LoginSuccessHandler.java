@@ -1,12 +1,12 @@
 package com.sankalp.expensetracker.auth.service;
 
+import com.sankalp.expensetracker.auth.dto.TokenResponse;
 import com.sankalp.expensetracker.auth.entity.Role;
 import com.sankalp.expensetracker.auth.entity.UserCredential;
 import com.sankalp.expensetracker.auth.repository.RoleRepository;
 import com.sankalp.expensetracker.auth.repository.UserCredentialRepository;
 import com.sankalp.expensetracker.common.events.Events;
 import com.sankalp.expensetracker.common.events.KafkaTopics;
-import com.sankalp.expensetracker.common.security.JwtUtil;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -25,7 +25,6 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 
 /**
@@ -42,7 +41,7 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
     private final UserCredentialRepository userRepo;
     private final RoleRepository roleRepo;
     private final PasswordEncoder passwordEncoder;
-    private final JwtUtil jwtUtil;
+    private final AuthService authService;
     private final KafkaTemplate<String, Object> kafka;
 
     @Value("${app.oauth2.success-redirect:http://localhost:3000/oauth2/callback}")
@@ -82,15 +81,13 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
             return created;
         });
 
-        List<String> roles = user.getRoles().stream().map(Role::getName).toList();
-        String access  = jwtUtil.generateAccessToken(user.getId(), user.getEmail(), roles);
-        String refresh = jwtUtil.generateRefreshToken(user.getId(), user.getEmail());
+        TokenResponse tokens = authService.issueTokens(user);
 
         // Tokens passed in URL fragment so they never hit server logs / referer headers.
         String target = frontendRedirect
-                + "#access_token=" + URLEncoder.encode(access, StandardCharsets.UTF_8)
-                + "&refresh_token=" + URLEncoder.encode(refresh, StandardCharsets.UTF_8)
-                + "&user_id=" + user.getId();
+                + "#access_token=" + URLEncoder.encode(tokens.accessToken(), StandardCharsets.UTF_8)
+                + "&refresh_token=" + URLEncoder.encode(tokens.refreshToken(), StandardCharsets.UTF_8)
+                + "&user_id=" + tokens.userId();
         res.sendRedirect(target);
         log.info("OAuth2 success for {}, redirecting to frontend", email);
     }

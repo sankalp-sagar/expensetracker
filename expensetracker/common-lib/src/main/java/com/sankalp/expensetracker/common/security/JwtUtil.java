@@ -34,19 +34,28 @@ public class JwtUtil {
         this.refreshTtlMs = refreshTtlMs;
     }
 
-    public String generateAccessToken(UUID userId, String email, List<String> roles) {
-        return build(userId, email, roles, accessTtlMs, "access");
+    public String generateAccessToken(UUID userId, String email, String fullName, List<String> roles) {
+        return build(userId, email, fullName, roles, accessTtlMs, "access");
     }
 
     public String generateRefreshToken(UUID userId, String email) {
-        return build(userId, email, List.of(), refreshTtlMs, "refresh");
+        return build(userId, email, null, List.of(), refreshTtlMs, "refresh");
     }
 
-    private String build(UUID userId, String email, List<String> roles, long ttl, String type) {
+    private String build(UUID userId, String email, String fullName, List<String> roles, long ttl, String type) {
         long now = System.currentTimeMillis();
+
+        Map<String, Object> claims = new java.util.HashMap<>();
+        claims.put("email", email);
+        if (fullName != null) {
+            claims.put("fullName", fullName);
+        }
+        claims.put("roles", roles);
+        claims.put("type", type);
+
         return Jwts.builder()
                 .subject(userId.toString())
-                .claims(Map.of("email", email, "roles", roles, "type", type))
+                .claims(claims)
                 .issuedAt(new Date(now))
                 .expiration(new Date(now + ttl))
                 .signWith(key)
@@ -63,6 +72,10 @@ public class JwtUtil {
 
     public String extractEmail(String token) {
         return (String) parse(token).getPayload().get("email");
+    }
+
+    public String extractFullName(String token) {
+        return (String) parse(token).getPayload().get("fullName");
     }
 
     @SuppressWarnings("unchecked")
