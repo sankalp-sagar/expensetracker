@@ -27,7 +27,7 @@ spring:
         - id: auth-service
           uri: lb://auth-service
           predicates:
-            - Path=/api/auth/**
+            - Path=/api/auth/**,/oauth2/**,/login/oauth2/**
           filters:
             - name: RequestRateLimiter
               args:
@@ -70,7 +70,7 @@ app:
   jwt:
     secret: ${JWT_SECRET:change-me-in-production-must-be-very-long-secret-key-256-bits}
   security:
-    public-paths: /api/auth/register,/api/auth/login,/api/auth/refresh,/api/auth/verify-email,/actuator/**,/v3/api-docs/**,/swagger-ui/**
+    public-paths: /api/auth/register,/api/auth/login,/api/auth/refresh,/api/auth/verify-email,/oauth2/**,/login/oauth2/**,/actuator/**,/v3/api-docs/**,/swagger-ui/**
 
 management:
   endpoints:
