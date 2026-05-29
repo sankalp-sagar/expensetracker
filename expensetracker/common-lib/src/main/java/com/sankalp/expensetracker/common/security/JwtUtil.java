@@ -78,6 +78,10 @@ public class JwtUtil {
         return (String) parse(token).getPayload().get("fullName");
     }
 
+    public String extractTokenType(String token) {
+        return (String) parse(token).getPayload().get("type");
+    }
+
     @SuppressWarnings("unchecked")
     public List<String> extractRoles(String token) {
         Object roles = parse(token).getPayload().get("roles");
@@ -88,6 +92,22 @@ public class JwtUtil {
         try {
             parse(token);
             return true;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    public boolean isValidAccessToken(String token) {
+        return isValidTokenType(token, "access");
+    }
+
+    public boolean isValidRefreshToken(String token) {
+        return isValidTokenType(token, "refresh");
+    }
+
+    private boolean isValidTokenType(String token, String expectedType) {
+        try {
+            return expectedType.equals(parse(token).getPayload().get("type"));
         } catch (Exception e) {
             return false;
         }

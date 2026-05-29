@@ -17,6 +17,13 @@ public interface FriendshipRepository extends JpaRepository<Friendship, UUID> {
 
     @Query("""
             select f from Friendship f
+            where (f.requesterId = :userA and f.addresseeId = :userB)
+               or (f.requesterId = :userB and f.addresseeId = :userA)
+            """)
+    List<Friendship> findBetweenUsers(@Param("userA") UUID userA, @Param("userB") UUID userB);
+
+    @Query("""
+            select f from Friendship f
             where (f.requesterId = :uid or f.addresseeId = :uid)
               and f.status = com.sankalp.expensetracker.user.entity.Friendship$Status.ACCEPTED
             """)

@@ -28,6 +28,7 @@ public class GroupMember extends AuditableEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
+    @Builder.Default
     private MemberRole role = MemberRole.MEMBER;
 
     public enum MemberRole { ADMIN, MEMBER }

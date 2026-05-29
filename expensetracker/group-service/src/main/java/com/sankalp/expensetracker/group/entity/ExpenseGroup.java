@@ -35,6 +35,7 @@ public class ExpenseGroup extends AuditableEntity {
     private UUID ownerId;
 
     @Column(name = "default_currency", length = 3, nullable = false)
+    @Builder.Default
     private String defaultCurrency = "USD";
 
     @Column(name = "invite_code", length = 12, unique = true)

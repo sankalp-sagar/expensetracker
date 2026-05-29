@@ -20,7 +20,8 @@ import java.util.UUID;
 public class Balance extends AuditableEntity {
 
     /**
-     * Stored as: user_a owes user_b `amount` (always non-negative; can be 0).
+     * Stored as a canonical user pair. Positive amount means user_a owes user_b;
+     * negative amount means user_b owes user_a.
      * Canonicalize order so we have one row per pair: store with userA.uuid < userB.uuid lexically.
      */
 
@@ -40,8 +41,10 @@ public class Balance extends AuditableEntity {
 
     /** signed: positive => userA owes userB; negative => userB owes userA. */
     @Column(nullable = false, precision = 18, scale = 2)
+    @Builder.Default
     private BigDecimal amount = BigDecimal.ZERO;
 
     @Column(nullable = false, length = 3)
+    @Builder.Default
     private String currency = "USD";
 }

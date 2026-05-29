@@ -21,18 +21,18 @@ public class LocalFileStorageProvider implements FileStorageProvider {
     private final Path baseDir;
 
     public LocalFileStorageProvider(@Value("${app.storage.local-dir:/app/uploads}") String baseDir) throws IOException {
-        this.baseDir = Paths.get(baseDir);
+        this.baseDir = Paths.get(baseDir).toAbsolutePath().normalize();
         Files.createDirectories(this.baseDir);
     }
 
     @Override
     public String store(MultipartFile file, String subPath) throws IOException {
-        Path subDir = baseDir.resolve(subPath);
+        Path subDir = safeResolve(subPath);
         Files.createDirectories(subDir);
         String original = file.getOriginalFilename() == null ? "file" : file.getOriginalFilename();
         String safe = original.replaceAll("[^A-Za-z0-9._-]", "_");
         String key = subPath + "/" + UUID.randomUUID() + "_" + safe;
-        Path target = baseDir.resolve(key);
+        Path target = safeResolve(key);
         Files.copy(file.getInputStream(), target, StandardCopyOption.REPLACE_EXISTING);
         log.debug("Stored upload at {}", target);
         return key;
@@ -45,10 +45,18 @@ public class LocalFileStorageProvider implements FileStorageProvider {
 
     @Override
     public void delete(String storageKey) throws IOException {
-        Files.deleteIfExists(baseDir.resolve(storageKey));
+        Files.deleteIfExists(safeResolve(storageKey));
     }
 
     public Path resolveLocal(String storageKey) {
-        return baseDir.resolve(storageKey);
+        return safeResolve(storageKey);
+    }
+
+    private Path safeResolve(String storageKey) {
+        Path resolved = baseDir.resolve(storageKey).normalize();
+        if (!resolved.startsWith(baseDir)) {
+            throw new IllegalArgumentException("Storage key escapes upload directory");
+        }
+        return resolved;
     }
 }

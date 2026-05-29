@@ -31,12 +31,15 @@ public class UserCredential extends AuditableEntity {
     private String fullName;
 
     @Column(name = "email_verified", nullable = false)
+    @Builder.Default
     private boolean emailVerified = false;
 
     @Column(name = "enabled", nullable = false)
+    @Builder.Default
     private boolean enabled = true;
 
     @Column(name = "failed_login_attempts")
+    @Builder.Default
     private int failedLoginAttempts = 0;
 
     @ManyToMany(fetch = FetchType.EAGER, cascade = CascadeType.PERSIST)

@@ -38,9 +38,11 @@ public class Expense extends AuditableEntity {
     private BigDecimal amount;
 
     @Column(name = "currency", nullable = false, length = 3)
+    @Builder.Default
     private String currency = "USD";
 
     @Column(name = "expense_date", nullable = false)
+    @Builder.Default
     private LocalDate expenseDate = LocalDate.now();
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -52,6 +54,7 @@ public class Expense extends AuditableEntity {
     private SplitType splitType;
 
     @Column(name = "is_recurring", nullable = false)
+    @Builder.Default
     private boolean recurring = false;
 
     @Enumerated(EnumType.STRING)

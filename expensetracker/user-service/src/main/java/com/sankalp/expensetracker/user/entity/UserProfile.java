@@ -39,13 +39,16 @@ public class UserProfile extends AuditableEntity {
     private String phone;
 
     @Column(name = "preferred_currency", length = 3)
+    @Builder.Default
     private String preferredCurrency = "USD";
 
     @Column(name = "preferred_language", length = 5)
+    @Builder.Default
     private String preferredLanguage = "en";
 
     @Enumerated(EnumType.STRING)
     @Column(name = "privacy", length = 20, nullable = false)
+    @Builder.Default
     private PrivacyLevel privacy = PrivacyLevel.PUBLIC;
 
     public enum PrivacyLevel { PUBLIC, FRIENDS_ONLY, PRIVATE }

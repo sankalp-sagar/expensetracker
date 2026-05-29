@@ -35,9 +35,15 @@ public class ExpenseService {
 
     @Transactional
     public ExpenseResponse createExpense(UUID actorId, CreateExpenseRequest req) {
+        if (!actorId.equals(req.payerId())) {
+            throw new BusinessException("Payer must match the authenticated user");
+        }
         Category category = req.categoryId() == null ? null :
                 categoryRepo.findById(req.categoryId())
                         .orElseThrow(() -> new NotFoundException("Category not found"));
+        if (category != null && category.getOwnerId() != null && !category.getOwnerId().equals(actorId)) {
+            throw new BusinessException("Category not visible to this user");
+        }
 
         Expense e = Expense.builder()
                 .groupId(req.groupId())
@@ -61,19 +67,14 @@ public class ExpenseService {
         e.getSplits().addAll(splitter.computeSplits(e, req));
         expenseRepo.save(e);
 
-        List<Events.SplitInfo> splitInfos = e.getSplits().stream()
-                .map(s -> new Events.SplitInfo(s.getUserId(), s.getAmount()))
-                .toList();
-        kafka.send(KafkaTopics.EXPENSE_CREATED,
-                new Events.ExpenseCreatedEvent(e.getId(), e.getGroupId(), e.getPayerId(),
-                        e.getAmount(), e.getCurrency(), e.getDescription(), splitInfos, Instant.now()));
+        publishExpenseCreated(e);
 
         return ExpenseResponse.from(e);
     }
 
     public ExpenseResponse get(UUID id) {
         return ExpenseResponse.from(
-                expenseRepo.findById(id).orElseThrow(() -> new NotFoundException("Expense not found")));
+                expenseRepo.findByIdAndDeletedFalse(id).orElseThrow(() -> new NotFoundException("Expense not found")));
     }
 
     public Page<ExpenseResponse> listByGroup(UUID groupId, Pageable pageable) {
@@ -86,13 +87,16 @@ public class ExpenseService {
 
     @Transactional
     public void delete(UUID expenseId, UUID actorId) {
-        Expense e = expenseRepo.findById(expenseId)
+        Expense e = expenseRepo.findByIdAndDeletedFalse(expenseId)
                 .orElseThrow(() -> new NotFoundException("Expense not found"));
         if (!e.getPayerId().equals(actorId))
             throw new BusinessException("Only the payer can delete this expense");
         e.setDeleted(true);
         e.setDeletedAt(Instant.now());
         expenseRepo.save(e);
+
+        kafka.send(KafkaTopics.EXPENSE_DELETED, new Events.ExpenseDeletedEvent(
+                e.getId(), e.getGroupId(), e.getPayerId(), e.getCurrency(), splitInfos(e), Instant.now()));
     }
 
     /** Processes due recurring expenses, materializing the next occurrence. */
@@ -120,6 +124,7 @@ public class ExpenseService {
                         .amount(s.getAmount()).rawValue(s.getRawValue()).build());
             }
             expenseRepo.save(child);
+            publishExpenseCreated(child);
             template.setNextOccurrence(nextDate(template.getNextOccurrence(), template.getRecurrencePeriod()));
             expenseRepo.save(template);
             created++;
@@ -134,5 +139,18 @@ public class ExpenseService {
             case MONTHLY -> from.plusMonths(1);
             case YEARLY -> from.plusYears(1);
         };
+    }
+
+    private void publishExpenseCreated(Expense e) {
+        kafka.send(KafkaTopics.EXPENSE_CREATED,
+                new Events.ExpenseCreatedEvent(e.getId(), e.getGroupId(), e.getPayerId(),
+                        e.getAmount(), e.getCurrency(), e.getDescription(), e.getExpenseDate(),
+                        splitInfos(e), Instant.now()));
+    }
+
+    private List<Events.SplitInfo> splitInfos(Expense e) {
+        return e.getSplits().stream()
+                .map(s -> new Events.SplitInfo(s.getUserId(), s.getAmount()))
+                .toList();
     }
 }

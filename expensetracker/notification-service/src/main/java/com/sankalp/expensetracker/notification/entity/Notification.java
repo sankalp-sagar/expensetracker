@@ -34,6 +34,7 @@ public class Notification extends AuditableEntity {
     private String body;
 
     @Column(name = "is_read", nullable = false)
+    @Builder.Default
     private boolean read = false;
 
     @Column(name = "related_id", columnDefinition = "uuid")

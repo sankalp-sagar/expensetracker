@@ -13,11 +13,14 @@ import java.util.UUID;
 @Repository
 public interface GroupRepository extends JpaRepository<ExpenseGroup, UUID> {
     Optional<ExpenseGroup> findByInviteCode(String inviteCode);
+    boolean existsByInviteCode(String inviteCode);
 
     @Query("""
             select distinct g from ExpenseGroup g
             join g.members m
             where m.userId = :userId
+              and g.deleted = false
+              and m.deleted = false
             order by g.createdAt desc
             """)
     List<ExpenseGroup> findGroupsForUser(@Param("userId") UUID userId);

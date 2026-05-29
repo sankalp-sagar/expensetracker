@@ -1,10 +1,11 @@
 package com.sankalp.expensetracker.expense.controller;
 
 import com.sankalp.expensetracker.common.dto.ApiResponse;
+import com.sankalp.expensetracker.expense.dto.ReceiptResponse;
 import com.sankalp.expensetracker.expense.entity.Category;
-import com.sankalp.expensetracker.expense.entity.Receipt;
 import com.sankalp.expensetracker.expense.repository.CategoryRepository;
 import com.sankalp.expensetracker.expense.service.ReceiptService;
+import com.sankalp.expensetracker.expense.storage.FileStorageProvider;
 import com.sankalp.expensetracker.expense.storage.LocalFileStorageProvider;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -29,7 +30,7 @@ public class CategoryReceiptController {
 
     private final CategoryRepository categoryRepo;
     private final ReceiptService receiptService;
-    private final LocalFileStorageProvider localStorage;
+    private final FileStorageProvider storage;
 
     @GetMapping("/api/categories")
     @Operation(summary = "List categories visible to current user")
@@ -47,20 +48,29 @@ public class CategoryReceiptController {
 
     @PostMapping(value = "/api/receipts/{expenseId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @Operation(summary = "Upload a receipt for an expense")
-    public ResponseEntity<ApiResponse<Receipt>> upload(@PathVariable UUID expenseId,
-                                                       @RequestPart("file") MultipartFile file) throws IOException {
-        return ResponseEntity.ok(ApiResponse.ok(receiptService.upload(expenseId, file)));
+    public ResponseEntity<ApiResponse<ReceiptResponse>> upload(@RequestHeader("X-User-Id") UUID userId,
+                                                               @PathVariable UUID expenseId,
+                                                               @RequestPart("file") MultipartFile file) throws IOException {
+        return ResponseEntity.ok(ApiResponse.ok(receiptService.upload(userId, expenseId, file)));
     }
 
     /** Stream a receipt file. Storage key (everything after /file/) maps to the local path. */
     @GetMapping("/api/receipts/file/**")
     @Operation(summary = "Stream a receipt file by storage key (local provider only)")
     public ResponseEntity<Resource> file(HttpServletRequest request) {
+        if (!(storage instanceof LocalFileStorageProvider localStorage)) {
+            return ResponseEntity.notFound().build();
+        }
         String path = request.getRequestURI();
         int idx = path.indexOf("/file/");
         if (idx < 0) return ResponseEntity.badRequest().build();
         String storageKey = path.substring(idx + "/file/".length());
-        Path p = localStorage.resolveLocal(storageKey);
+        Path p;
+        try {
+            p = localStorage.resolveLocal(storageKey);
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest().build();
+        }
         if (!p.toFile().exists()) return ResponseEntity.notFound().build();
         return ResponseEntity.ok(new FileSystemResource(p.toFile()));
     }

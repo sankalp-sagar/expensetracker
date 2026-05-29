@@ -46,7 +46,7 @@ public class GroupService {
         g.getMembers().add(owner);
         // initial members (MEMBER role)
         if (req.initialMemberIds() != null) {
-            for (UUID memberId : req.initialMemberIds()) {
+            for (UUID memberId : new LinkedHashSet<>(req.initialMemberIds())) {
                 if (memberId.equals(ownerId)) continue;
                 g.getMembers().add(GroupMember.builder()
                         .group(g).userId(memberId).role(GroupMember.MemberRole.MEMBER).build());
@@ -111,6 +111,10 @@ public class GroupService {
             throw new BusinessException("Only admins can remove others");
         GroupMember m = memberRepo.findByGroupIdAndUserId(groupId, memberId)
                 .orElseThrow(() -> new NotFoundException("Member not found"));
+        ExpenseGroup g = m.getGroup();
+        if (g.getOwnerId().equals(memberId)) {
+            throw new BusinessException("Group owner cannot be removed");
+        }
         memberRepo.delete(m);
     }
 
@@ -122,8 +126,14 @@ public class GroupService {
     }
 
     private String generateInviteCode() {
-        StringBuilder sb = new StringBuilder(8);
-        for (int i = 0; i < 8; i++) sb.append(CODE_CHARS.charAt(RAND.nextInt(CODE_CHARS.length())));
-        return sb.toString();
+        for (int attempt = 0; attempt < 10; attempt++) {
+            StringBuilder sb = new StringBuilder(8);
+            for (int i = 0; i < 8; i++) sb.append(CODE_CHARS.charAt(RAND.nextInt(CODE_CHARS.length())));
+            String code = sb.toString();
+            if (!groupRepo.existsByInviteCode(code)) {
+                return code;
+            }
+        }
+        throw new BusinessException("Could not generate a unique invite code");
     }
 }

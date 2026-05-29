@@ -20,7 +20,7 @@ export default function GroupDetailPage() {
   const [activeSuggestion, setActiveSuggestion] = useState(null);
   const [liveTick, setLiveTick] = useState(0);
 
-  const load = async () => {
+  const load = useCallback(async () => {
     try {
       const [g, ex, bs, ss] = await Promise.all([
         groupsApi.get(groupId),
@@ -35,9 +35,9 @@ export default function GroupDetailPage() {
     } catch (err) {
       toast.error("Failed to load group");
     }
-  };
+  }, [groupId]);
 
-  useEffect(() => { load(); }, [groupId]);
+  useEffect(() => { load(); }, [load]);
 
   // Live balance updates over WebSocket — settlement-service broadcasts every time balances change
   const onLiveBalance = useCallback((payload) => {
@@ -114,12 +114,14 @@ export default function GroupDetailPage() {
                 </div>
                 <div className="flex items-center gap-3">
                   <span className="font-mono font-semibold text-[#30A46C]">${Number(s.amount).toFixed(2)}</span>
-                  <button
-                    onClick={() => { setActiveSuggestion(s); setSettleOpen(true); }}
-                    data-testid={`mark-paid-${i}`}
-                    className="text-xs px-2 py-1 bg-white border border-zinc-300 hover:bg-zinc-50 rounded-sm">
-                    Mark paid
-                  </button>
+                  {(s.from === user?.userId || s.to === user?.userId) && (
+                    <button
+                      onClick={() => { setActiveSuggestion(s); setSettleOpen(true); }}
+                      data-testid={`mark-paid-${i}`}
+                      className="text-xs px-2 py-1 bg-white border border-zinc-300 hover:bg-zinc-50 rounded-sm">
+                      Mark paid
+                    </button>
+                  )}
                 </div>
               </li>
             ))}

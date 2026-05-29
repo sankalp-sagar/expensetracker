@@ -31,5 +31,6 @@ public class RefreshToken extends AuditableEntity {
     private Instant expiresAt;
 
     @Column(name = "revoked", nullable = false)
+    @Builder.Default
     private boolean revoked = false;
 }

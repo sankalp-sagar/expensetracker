@@ -32,13 +32,21 @@ public class SettlementService {
     public Settlement record(UUID actorId, CreateSettlementRequest req) {
         if (req.amount().signum() <= 0) throw new BusinessException("Amount must be > 0");
         if (req.payerId().equals(req.payeeId())) throw new BusinessException("Payer and payee must differ");
+        if (!actorId.equals(req.payerId()) && !actorId.equals(req.payeeId())) {
+            throw new BusinessException("Only the payer or payee can record this settlement");
+        }
+        String currency = req.currency() == null ? "USD" : req.currency();
+        BigDecimal outstanding = balanceService.debtOwed(req.groupId(), req.payerId(), req.payeeId(), currency);
+        if (outstanding.compareTo(req.amount()) < 0) {
+            throw new BusinessException("Settlement exceeds outstanding debt. Outstanding: " + outstanding);
+        }
 
         Settlement s = Settlement.builder()
                 .groupId(req.groupId())
                 .payerId(req.payerId())
                 .payeeId(req.payeeId())
                 .amount(req.amount())
-                .currency(req.currency() == null ? "USD" : req.currency())
+                .currency(currency)
                 .status(Settlement.Status.COMPLETED)
                 .settledAt(Instant.now())
                 .method(req.method())

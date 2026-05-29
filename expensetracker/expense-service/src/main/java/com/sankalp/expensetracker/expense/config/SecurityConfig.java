@@ -18,6 +18,7 @@ public class SecurityConfig {
 
     @Bean public NewTopic expenseCreated() { return new NewTopic(KafkaTopics.EXPENSE_CREATED, 3, (short) 1); }
     @Bean public NewTopic expenseUpdated() { return new NewTopic(KafkaTopics.EXPENSE_UPDATED, 3, (short) 1); }
+    @Bean public NewTopic expenseDeleted() { return new NewTopic(KafkaTopics.EXPENSE_DELETED, 3, (short) 1); }
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http, JwtUtil jwtUtil) throws Exception {

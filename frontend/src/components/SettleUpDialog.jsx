@@ -32,6 +32,9 @@ export default function SettleUpDialog({ open, onOpenChange, group, currentUserI
     e.preventDefault();
     if (!payerId || !payeeId || !amount) return toast.error("All fields required");
     if (payerId === payeeId) return toast.error("Payer and payee must differ");
+    if (currentUserId && payerId !== currentUserId && payeeId !== currentUserId) {
+      return toast.error("You must be the payer or payee");
+    }
     setSaving(true);
     try {
       await settlementsApi.record({

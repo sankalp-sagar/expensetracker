@@ -11,15 +11,20 @@ import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Repository
 public interface ExpenseRepository extends JpaRepository<Expense, UUID> {
 
     @EntityGraph(attributePaths = {"splits", "category"})
+    Optional<Expense> findByIdAndDeletedFalse(UUID id);
+
+    @EntityGraph(attributePaths = {"splits", "category"})
     @Query("""
             select e from Expense e
             where e.groupId = :groupId
+              and e.deleted = false
             order by e.expenseDate desc, e.createdAt desc
             """)
     Page<Expense> findByGroup(@Param("groupId") UUID groupId, Pageable pageable);
@@ -28,7 +33,8 @@ public interface ExpenseRepository extends JpaRepository<Expense, UUID> {
     @Query("""
             select distinct e from Expense e
             left join e.splits s
-            where e.payerId = :userId or s.userId = :userId
+            where e.deleted = false
+              and (e.payerId = :userId or s.userId = :userId)
             order by e.expenseDate desc, e.createdAt desc
             """)
     Page<Expense> findInvolvingUser(@Param("userId") UUID userId, Pageable pageable);

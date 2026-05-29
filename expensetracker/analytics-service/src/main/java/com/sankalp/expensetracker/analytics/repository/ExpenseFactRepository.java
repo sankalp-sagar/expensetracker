@@ -16,6 +16,8 @@ public interface ExpenseFactRepository extends JpaRepository<ExpenseFact, UUID> 
 
     boolean existsByExpenseId(UUID expenseId);
 
+    void deleteByExpenseId(UUID expenseId);
+
     @Query("select coalesce(sum(f.amount), 0) from ExpenseFact f where f.payerId = :userId and f.factDate between :from and :to")
     BigDecimal totalSpentByUserInRange(@Param("userId") UUID userId,
                                        @Param("from") LocalDate from,

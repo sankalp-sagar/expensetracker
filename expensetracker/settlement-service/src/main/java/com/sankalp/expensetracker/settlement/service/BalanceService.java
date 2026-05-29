@@ -6,7 +6,6 @@ import com.sankalp.expensetracker.settlement.entity.Balance;
 import com.sankalp.expensetracker.settlement.repository.BalanceRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.event.EventListener;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
@@ -26,6 +25,8 @@ import java.util.*;
 @RequiredArgsConstructor
 public class BalanceService {
 
+    private static final BigDecimal CENT = new BigDecimal("0.01");
+
     private final BalanceRepository balanceRepo;
     private final SimpMessagingTemplate ws;
 
@@ -33,12 +34,24 @@ public class BalanceService {
     @Transactional
     public void onExpenseCreated(Events.ExpenseCreatedEvent e) {
         log.info("Updating balances for expense {} in group {}", e.expenseId(), e.groupId());
-        UUID payer = e.payerId();
-        for (Events.SplitInfo split : e.splits()) {
-            if (split.userId().equals(payer)) continue;       // payer owes themselves: skip
-            applyDebt(e.groupId(), split.userId(), payer, split.share(), e.currency());
-        }
+        applyExpense(e.groupId(), e.payerId(), e.splits(), e.currency(), BigDecimal.ONE);
         publishGroupBalances(e.groupId());
+    }
+
+    @KafkaListener(topics = KafkaTopics.EXPENSE_DELETED, groupId = "settlement-service")
+    @Transactional
+    public void onExpenseDeleted(Events.ExpenseDeletedEvent e) {
+        log.info("Reversing balances for deleted expense {} in group {}", e.expenseId(), e.groupId());
+        applyExpense(e.groupId(), e.payerId(), e.splits(), e.currency(), BigDecimal.ONE.negate());
+        publishGroupBalances(e.groupId());
+    }
+
+    private void applyExpense(UUID groupId, UUID payer, List<Events.SplitInfo> splits,
+                              String currency, BigDecimal multiplier) {
+        for (Events.SplitInfo split : splits) {
+            if (split.userId().equals(payer)) continue;       // payer owes themselves: skip
+            applyDebt(groupId, split.userId(), payer, split.share().multiply(multiplier), currency);
+        }
     }
 
     @Transactional
@@ -63,21 +76,47 @@ public class BalanceService {
                 .groupId(groupId).userA(a).userB(b).currency(currency)
                 .amount(BigDecimal.ZERO).build());
         bal.setAmount(bal.getAmount().add(signed).setScale(2, RoundingMode.HALF_UP));
-        balanceRepo.save(bal);
+        if (bal.getAmount().abs().compareTo(CENT) < 0) {
+            existing.ifPresent(balanceRepo::delete);
+        } else {
+            balanceRepo.save(bal);
+        }
     }
 
     public List<Balance> getGroupBalances(UUID groupId) {
-        return balanceRepo.findByGroupId(groupId);
+        return balanceRepo.findByGroupId(groupId).stream()
+                .filter(b -> b.getAmount().abs().compareTo(CENT) >= 0)
+                .toList();
     }
 
     public Map<UUID, BigDecimal> getNetBalancesByUser(UUID groupId) {
         Map<UUID, BigDecimal> net = new HashMap<>();
-        for (Balance b : balanceRepo.findByGroupId(groupId)) {
+        for (Balance b : getGroupBalances(groupId)) {
             // userA owes userB `amount`: userA -= amount; userB += amount
             net.merge(b.getUserA(), b.getAmount().negate(), BigDecimal::add);
             net.merge(b.getUserB(), b.getAmount(), BigDecimal::add);
         }
         return net;
+    }
+
+    public BigDecimal debtOwed(UUID groupId, UUID debtor, UUID creditor, String currency) {
+        UUID a;
+        UUID b;
+        boolean debtorIsA;
+        if (debtor.toString().compareTo(creditor.toString()) < 0) {
+            a = debtor;
+            b = creditor;
+            debtorIsA = true;
+        } else {
+            a = creditor;
+            b = debtor;
+            debtorIsA = false;
+        }
+        return balanceRepo.findByGroupIdAndUserAAndUserBAndCurrency(groupId, a, b, currency)
+                .map(Balance::getAmount)
+                .map(amount -> debtorIsA ? amount : amount.negate())
+                .filter(amount -> amount.compareTo(CENT) >= 0)
+                .orElse(BigDecimal.ZERO);
     }
 
     private void publishGroupBalances(UUID groupId) {

@@ -1,6 +1,8 @@
 package com.sankalp.expensetracker.expense.service;
 
+import com.sankalp.expensetracker.common.exception.BusinessException;
 import com.sankalp.expensetracker.common.exception.NotFoundException;
+import com.sankalp.expensetracker.expense.dto.ReceiptResponse;
 import com.sankalp.expensetracker.expense.entity.Expense;
 import com.sankalp.expensetracker.expense.entity.Receipt;
 import com.sankalp.expensetracker.expense.ocr.OcrProvider;
@@ -28,9 +30,17 @@ public class ReceiptService {
     private final OcrProvider ocrProvider;
 
     @Transactional
-    public Receipt upload(UUID expenseId, MultipartFile file) throws IOException {
-        Expense e = expenseRepo.findById(expenseId)
+    public ReceiptResponse upload(UUID actorId, UUID expenseId, MultipartFile file) throws IOException {
+        if (file.isEmpty()) {
+            throw new BusinessException("Receipt file is empty");
+        }
+        Expense e = expenseRepo.findByIdAndDeletedFalse(expenseId)
                 .orElseThrow(() -> new NotFoundException("Expense not found"));
+        boolean involved = e.getPayerId().equals(actorId)
+                || e.getSplits().stream().anyMatch(s -> s.getUserId().equals(actorId));
+        if (!involved) {
+            throw new BusinessException("Only participants can upload receipts for this expense");
+        }
         // Cache bytes so we can both store and OCR them without re-reading the stream
         byte[] bytes = file.getBytes();
         String key = storage.store(file, "receipts/" + expenseId);
@@ -52,7 +62,8 @@ public class ReceiptService {
                 log.warn("OCR pipeline failed for new receipt: {}", ex.getMessage());
             }
         }
-        return receiptRepo.save(r);
+        Receipt saved = receiptRepo.save(r);
+        return ReceiptResponse.from(saved, storage.resolveUrl(saved.getStorageKey()));
     }
 
     private boolean isImage(String contentType) {

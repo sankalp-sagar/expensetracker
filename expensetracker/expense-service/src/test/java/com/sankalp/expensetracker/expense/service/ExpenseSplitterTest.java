@@ -61,6 +61,25 @@ class ExpenseSplitterTest {
     }
 
     @Test
+    void duplicate_participants_are_rejected() {
+        Expense e = expense(new BigDecimal("100.00"));
+        UUID userId = UUID.randomUUID();
+        var req = req(new BigDecimal("100.00"), CreateExpenseRequest.SplitTypeDto.EQUAL,
+                List.of(new CreateExpenseRequest.SplitInputDto(userId, null),
+                        new CreateExpenseRequest.SplitInputDto(userId, null)));
+        assertThrows(RuntimeException.class, () -> splitter.computeSplits(e, req));
+    }
+
+    @Test
+    void percentage_split_rejects_non_positive_values() {
+        Expense e = expense(new BigDecimal("100.00"));
+        var req = req(new BigDecimal("100.00"), CreateExpenseRequest.SplitTypeDto.PERCENTAGE,
+                List.of(new CreateExpenseRequest.SplitInputDto(UUID.randomUUID(), new BigDecimal("0")),
+                        new CreateExpenseRequest.SplitInputDto(UUID.randomUUID(), new BigDecimal("100"))));
+        assertThrows(RuntimeException.class, () -> splitter.computeSplits(e, req));
+    }
+
+    @Test
     void percentage_split_sums_correctly_with_rounding() {
         Expense e = expense(new BigDecimal("99.99"));
         var splits = splitter.computeSplits(e, req(new BigDecimal("99.99"),

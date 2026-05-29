@@ -38,5 +38,6 @@ public class Receipt extends AuditableEntity {
     private String ocrText;
 
     @Column(name = "ocr_processed", nullable = false)
+    @Builder.Default
     private boolean ocrProcessed = false;
 }

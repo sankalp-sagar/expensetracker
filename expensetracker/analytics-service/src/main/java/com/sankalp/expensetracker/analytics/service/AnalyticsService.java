@@ -35,8 +35,17 @@ public class AnalyticsService {
                 .amount(e.amount())
                 .currency(e.currency())
                 .description(e.description())
-                .factDate(LocalDate.ofInstant(e.occurredAt(), java.time.ZoneOffset.UTC))
+                .factDate(e.expenseDate() == null
+                        ? LocalDate.ofInstant(e.occurredAt(), java.time.ZoneOffset.UTC)
+                        : e.expenseDate())
                 .build());
+    }
+
+    @KafkaListener(topics = KafkaTopics.EXPENSE_DELETED, groupId = "analytics-service")
+    @Transactional
+    @CacheEvict(value = {"monthlyTotals", "groupContributions"}, allEntries = true)
+    public void onExpenseDeleted(Events.ExpenseDeletedEvent e) {
+        factRepo.deleteByExpenseId(e.expenseId());
     }
 
     public BigDecimal totalSpent(UUID userId, LocalDate from, LocalDate to) {

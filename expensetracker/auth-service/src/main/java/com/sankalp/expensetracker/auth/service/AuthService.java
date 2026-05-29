@@ -26,6 +26,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.HashSet;
@@ -56,16 +57,17 @@ public class AuthService {
 
     @Transactional
     public TokenResponse register(RegisterRequest req) {
-        if (userRepo.existsByEmailIgnoreCase(req.email())) {
+        String email = req.email().trim().toLowerCase();
+        if (userRepo.existsByEmailIgnoreCase(email)) {
             throw new BusinessException("Email already registered");
         }
         Role userRole = roleRepo.findByName("USER")
                 .orElseGet(() -> roleRepo.save(Role.builder().name("USER").build()));
 
         UserCredential u = UserCredential.builder()
-                .email(req.email().toLowerCase())
+                .email(email)
                 .passwordHash(passwordEncoder.encode(req.password()))
-                .fullName(req.fullName())
+                .fullName(req.fullName().trim())
                 .emailVerified(false)
                 .enabled(true)
                 .roles(new HashSet<>(Set.of(userRole)))
@@ -80,7 +82,7 @@ public class AuthService {
 
     @Transactional
     public TokenResponse login(LoginRequest req) {
-        UserCredential u = userRepo.findByEmailIgnoreCase(req.email())
+        UserCredential u = userRepo.findByEmailIgnoreCase(req.email().trim())
                 .orElseThrow(() -> new UnauthorizedException("Invalid credentials"));
         if (!u.isEnabled()) throw new UnauthorizedException("Account disabled");
         if (!passwordEncoder.matches(req.password(), u.getPasswordHash())) {
@@ -95,6 +97,9 @@ public class AuthService {
 
     @Transactional
     public TokenResponse refresh(RefreshTokenRequest req) {
+        if (!jwtUtil.isValidRefreshToken(req.refreshToken())) {
+            throw new UnauthorizedException("Invalid refresh token");
+        }
         String hash = sha256(req.refreshToken());
         RefreshToken stored = refreshRepo.findByTokenHash(hash)
                 .orElseThrow(() -> new UnauthorizedException("Invalid refresh token"));
@@ -144,7 +149,7 @@ public class AuthService {
 
     private static String sha256(String s) {
         try {
-            byte[] hash = MessageDigest.getInstance("SHA-256").digest(s.getBytes());
+            byte[] hash = MessageDigest.getInstance("SHA-256").digest(s.getBytes(StandardCharsets.UTF_8));
             StringBuilder sb = new StringBuilder();
             for (byte b : hash) sb.append(String.format("%02x", b));
             return sb.toString();

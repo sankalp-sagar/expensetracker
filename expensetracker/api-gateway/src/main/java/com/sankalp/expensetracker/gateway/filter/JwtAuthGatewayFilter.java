@@ -9,7 +9,9 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;
 import org.springframework.cloud.gateway.filter.GlobalFilter;
 import org.springframework.core.Ordered;
+import org.springframework.data.redis.core.ReactiveStringRedisTemplate;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.stereotype.Component;
@@ -19,6 +21,7 @@ import reactor.core.publisher.Mono;
 
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 
@@ -30,21 +33,33 @@ import java.util.UUID;
 @Component
 public class JwtAuthGatewayFilter implements GlobalFilter, Ordered {
 
+    private static final String BLACKLIST_PREFIX = "jwt:blacklist:";
+
     private final SecretKey key;
     private final List<String> publicPaths;
+    private final ReactiveStringRedisTemplate redis;
     private final AntPathMatcher matcher = new AntPathMatcher();
 
     public JwtAuthGatewayFilter(
             @Value("${app.jwt.secret}") String secret,
-            @Value("${app.security.public-paths}") String publicPathsStr) {
+            @Value("${app.security.public-paths}") String publicPathsStr,
+            ReactiveStringRedisTemplate redis) {
         this.key = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
-        this.publicPaths = List.of(publicPathsStr.split(","));
+        this.publicPaths = Arrays.stream(publicPathsStr.split(","))
+                .map(String::trim)
+                .filter(p -> !p.isBlank())
+                .toList();
+        this.redis = redis;
     }
 
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
         ServerHttpRequest req = exchange.getRequest();
         String path = req.getURI().getPath();
+
+        if (HttpMethod.OPTIONS.equals(req.getMethod())) {
+            return chain.filter(exchange);
+        }
 
         if (publicPaths.stream().anyMatch(p -> matcher.match(p, path))) {
             return chain.filter(exchange);
@@ -58,16 +73,33 @@ public class JwtAuthGatewayFilter implements GlobalFilter, Ordered {
         try {
             Jws<Claims> jws = Jwts.parser().verifyWith(key).build().parseSignedClaims(token);
             Claims c = jws.getPayload();
+            if (!"access".equals(c.get("type"))) {
+                return unauthorized(exchange, "Invalid token type");
+            }
             UUID uid = UUID.fromString(c.getSubject());
             String email = (String) c.get("email");
             Object rolesObj = c.get("roles");
-            String roles = rolesObj == null ? "" : String.join(",", (List<String>) rolesObj);
-            ServerHttpRequest mutated = req.mutate()
-                    .header("X-User-Id", uid.toString())
-                    .header("X-User-Email", email == null ? "" : email)
-                    .header("X-User-Roles", roles)
-                    .build();
-            return chain.filter(exchange.mutate().request(mutated).build());
+            String roles = rolesObj instanceof List<?> list
+                    ? String.join(",", list.stream().map(String::valueOf).toList())
+                    : "";
+            return redis.hasKey(BLACKLIST_PREFIX + token)
+                    .onErrorReturn(false)
+                    .flatMap(blacklisted -> {
+                        if (blacklisted) {
+                            return unauthorized(exchange, "Token has been revoked");
+                        }
+                        ServerHttpRequest mutated = req.mutate()
+                                .headers(headers -> {
+                                    headers.remove("X-User-Id");
+                                    headers.remove("X-User-Email");
+                                    headers.remove("X-User-Roles");
+                                    headers.set("X-User-Id", uid.toString());
+                                    headers.set("X-User-Email", email == null ? "" : email);
+                                    headers.set("X-User-Roles", roles);
+                                })
+                                .build();
+                        return chain.filter(exchange.mutate().request(mutated).build());
+                    });
         } catch (Exception e) {
             log.warn("Invalid JWT: {}", e.getMessage());
             return unauthorized(exchange, "Invalid or expired token");

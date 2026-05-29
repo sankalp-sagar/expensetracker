@@ -2,6 +2,7 @@ package com.sankalp.expensetracker.common.events;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
@@ -19,10 +20,14 @@ public class Events {
 
     public record ExpenseCreatedEvent(
             UUID expenseId, UUID groupId, UUID payerId, BigDecimal amount, String currency,
-            String description, List<SplitInfo> splits, Instant occurredAt) {}
+            String description, LocalDate expenseDate, List<SplitInfo> splits, Instant occurredAt) {}
 
     public record ExpenseUpdatedEvent(
             UUID expenseId, UUID groupId, BigDecimal amount, Instant occurredAt) {}
+
+    public record ExpenseDeletedEvent(
+            UUID expenseId, UUID groupId, UUID payerId, String currency,
+            List<SplitInfo> splits, Instant occurredAt) {}
 
     public record SettlementCompletedEvent(
             UUID settlementId, UUID payerId, UUID payeeId, UUID groupId,

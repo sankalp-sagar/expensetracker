@@ -36,13 +36,16 @@ public class Settlement extends AuditableEntity {
     private BigDecimal amount;
 
     @Column(nullable = false, length = 3)
+    @Builder.Default
     private String currency = "USD";
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
+    @Builder.Default
     private Status status = Status.COMPLETED;
 
     @Column(name = "settled_at")
+    @Builder.Default
     private Instant settledAt = Instant.now();
 
     @Column(name = "method", length = 30)

@@ -79,7 +79,29 @@ public class UserService {
     @Transactional
     public Friendship sendFriendRequest(UUID requesterId, UUID addresseeId) {
         if (requesterId.equals(addresseeId)) throw new BusinessException("Cannot friend yourself");
-        return friendshipRepo.findByRequesterIdAndAddresseeId(requesterId, addresseeId)
+        if (profileRepo.findByUserId(addresseeId).isEmpty()) {
+            throw new NotFoundException("Addressee profile not found");
+        }
+        List<Friendship> existingLinks = friendshipRepo.findBetweenUsers(requesterId, addresseeId);
+        return existingLinks.stream().findFirst()
+                .map(existing -> {
+                    if (existing.getStatus() == Friendship.Status.BLOCKED) {
+                        throw new BusinessException("Friend request is blocked");
+                    }
+                    if (existing.getStatus() == Friendship.Status.REJECTED) {
+                        existing.setRequesterId(requesterId);
+                        existing.setAddresseeId(addresseeId);
+                        existing.setStatus(Friendship.Status.PENDING);
+                        return friendshipRepo.save(existing);
+                    }
+                    if (existing.getStatus() == Friendship.Status.PENDING
+                            && existing.getRequesterId().equals(addresseeId)
+                            && existing.getAddresseeId().equals(requesterId)) {
+                        existing.setStatus(Friendship.Status.ACCEPTED);
+                        return friendshipRepo.save(existing);
+                    }
+                    return existing;
+                })
                 .orElseGet(() -> friendshipRepo.save(Friendship.builder()
                         .requesterId(requesterId)
                         .addresseeId(addresseeId)

@@ -7,5 +7,6 @@ public final class KafkaTopics {
     public static final String GROUP_CREATED = "group.created";
     public static final String EXPENSE_CREATED = "expense.created";
     public static final String EXPENSE_UPDATED = "expense.updated";
+    public static final String EXPENSE_DELETED = "expense.deleted";
     public static final String SETTLEMENT_COMPLETED = "settlement.completed";
 }
