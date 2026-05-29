@@ -43,7 +43,22 @@ export default function AppLayout() {
     try {
       const list = await notificationsApi.list();
       setNotifs(list || []);
-    } catch { setNotifs([]); }
+
+      // Mark all notifications as read so they don't persist
+      await Promise.all(
+        (list || [])
+          .filter((n) => !n.read)
+          .map((n) => notificationsApi.markRead(n.id).catch(() => null))
+      );
+
+      // Refresh badge + dropdown contents
+      const r = await notificationsApi.unread();
+      setUnread(r.count || 0);
+      const refreshed = await notificationsApi.list();
+      setNotifs(refreshed || []);
+    } catch {
+      setNotifs([]);
+    }
   };
 
   return (

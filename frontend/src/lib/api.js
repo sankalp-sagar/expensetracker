@@ -10,10 +10,21 @@ export const api = axios.create({
   timeout: 15000,
 });
 
-// Inject Bearer token from localStorage
+// Inject Bearer token + required X-User-Id header from stored auth state
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem("accessToken");
   if (token) config.headers.Authorization = `Bearer ${token}`;
+
+  const storedUser = localStorage.getItem("user");
+  if (storedUser) {
+    try {
+      const parsed = JSON.parse(storedUser);
+      if (parsed?.userId) config.headers["X-User-Id"] = parsed.userId;
+    } catch {
+      // ignore malformed local user
+    }
+  }
+
   return config;
 });
 

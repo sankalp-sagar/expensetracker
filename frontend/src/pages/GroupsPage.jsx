@@ -13,7 +13,13 @@ export default function GroupsPage() {
   const [joinOpen, setJoinOpen] = useState(false);
 
   const load = async () => {
-    try { setGroups(await groupsApi.mine()); } catch { setGroups([]); }
+    try {
+      setGroups(await groupsApi.mine());
+    } catch (err) {
+      // Keep UI from silently failing; helps diagnose missing X-User-Id
+      toast.error(err?.response?.data?.message || "Failed to load your groups");
+      setGroups([]);
+    }
   };
   useEffect(() => { load(); }, []);
 

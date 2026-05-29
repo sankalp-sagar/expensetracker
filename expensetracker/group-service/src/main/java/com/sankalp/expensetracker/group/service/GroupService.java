@@ -61,6 +61,7 @@ public class GroupService {
         return toResponse(g);
     }
 
+    @Transactional
     public GroupResponse get(UUID groupId, UUID requesterId) {
         ExpenseGroup g = groupRepo.findById(groupId)
                 .orElseThrow(() -> new NotFoundException("Group not found"));
@@ -69,9 +70,12 @@ public class GroupService {
         return toResponse(g);
     }
 
+
+    @Transactional(readOnly = true)
     public List<GroupResponse> listMyGroups(UUID userId) {
         return groupRepo.findGroupsForUser(userId).stream().map(this::toResponse).toList();
     }
+
 
     @Transactional
     public GroupResponse addMember(UUID groupId, UUID requesterId, UUID newMemberId) {
