@@ -1,11 +1,20 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { settlementsApi } from "@/lib/services";
+import { userOptionLabel } from "@/lib/userDisplay";
 import {
   Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 
-export default function SettleUpDialog({ open, onOpenChange, group, currentUserId, suggestion, onSettled }) {
+export default function SettleUpDialog({
+  open,
+  onOpenChange,
+  group,
+  currentUserId,
+  suggestion,
+  profilesByUserId = {},
+  onSettled,
+}) {
   const [payerId, setPayerId] = useState("");
   const [payeeId, setPayeeId] = useState("");
   const [amount, setAmount] = useState("");
@@ -66,12 +75,12 @@ export default function SettleUpDialog({ open, onOpenChange, group, currentUserI
               data-testid="settle-payer-select"
               value={payerId}
               onChange={(e) => setPayerId(e.target.value)}
-              className="w-full px-3 py-2 border border-zinc-300 rounded-sm font-mono text-sm focus:outline-none focus:border-[#0055FF]"
+              className="w-full px-3 py-2 border border-zinc-300 rounded-sm text-sm focus:outline-none focus:border-[#0055FF]"
             >
               <option value="">— select —</option>
               {(group?.members || []).map((m) => (
                 <option key={m.userId} value={m.userId}>
-                  {m.userId === currentUserId ? "you" : m.userId.split("-")[0]}
+                  {userOptionLabel(m.userId, profilesByUserId, currentUserId)}
                 </option>
               ))}
             </select>
@@ -82,12 +91,12 @@ export default function SettleUpDialog({ open, onOpenChange, group, currentUserI
               data-testid="settle-payee-select"
               value={payeeId}
               onChange={(e) => setPayeeId(e.target.value)}
-              className="w-full px-3 py-2 border border-zinc-300 rounded-sm font-mono text-sm focus:outline-none focus:border-[#0055FF]"
+              className="w-full px-3 py-2 border border-zinc-300 rounded-sm text-sm focus:outline-none focus:border-[#0055FF]"
             >
               <option value="">— select —</option>
               {(group?.members || []).map((m) => (
                 <option key={m.userId} value={m.userId}>
-                  {m.userId === currentUserId ? "you" : m.userId.split("-")[0]}
+                  {userOptionLabel(m.userId, profilesByUserId, currentUserId)}
                 </option>
               ))}
             </select>

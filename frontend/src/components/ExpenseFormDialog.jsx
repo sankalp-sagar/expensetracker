@@ -1,13 +1,21 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { expensesApi } from "@/lib/services";
+import { userOptionLabel } from "@/lib/userDisplay";
 import {
   Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 
 const SPLIT_TYPES = ["EQUAL", "EXACT", "PERCENTAGE", "SHARE"];
 
-export default function ExpenseFormDialog({ open, onOpenChange, group, payerId, onCreated }) {
+export default function ExpenseFormDialog({
+  open,
+  onOpenChange,
+  group,
+  payerId,
+  profilesByUserId = {},
+  onCreated,
+}) {
   const [description, setDescription] = useState("");
   const [amount, setAmount] = useState("");
   const [splitType, setSplitType] = useState("EQUAL");
@@ -114,8 +122,8 @@ export default function ExpenseFormDialog({ open, onOpenChange, group, payerId, 
             <ul>
               {rows.map((r, i) => (
                 <li key={i} className="px-3 py-2 flex items-center gap-2 border-b border-zinc-100 last:border-0">
-                  <span className="flex-1 font-mono text-xs text-zinc-600 truncate">
-                    {r.userId === payerId ? "you" : r.userId.split("-")[0]}
+                  <span className="flex-1 text-sm text-zinc-700 truncate">
+                    {userOptionLabel(r.userId, profilesByUserId, payerId)}
                   </span>
                   {splitType !== "EQUAL" && (
                     <input

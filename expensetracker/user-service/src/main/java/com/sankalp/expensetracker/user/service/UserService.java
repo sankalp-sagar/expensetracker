@@ -6,6 +6,7 @@ import com.sankalp.expensetracker.common.exception.BusinessException;
 import com.sankalp.expensetracker.common.exception.NotFoundException;
 import com.sankalp.expensetracker.user.dto.UpdateProfileRequest;
 import com.sankalp.expensetracker.user.dto.UserProfileResponse;
+import com.sankalp.expensetracker.user.dto.UserSummaryResponse;
 import com.sankalp.expensetracker.user.entity.Friendship;
 import com.sankalp.expensetracker.user.entity.UserProfile;
 import com.sankalp.expensetracker.user.repository.FriendshipRepository;
@@ -20,6 +21,7 @@ import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.UUID;
 
@@ -49,6 +51,14 @@ public class UserService {
         return profileRepo.findByUserId(userId)
                 .map(UserProfileResponse::from)
                 .orElseThrow(() -> new NotFoundException("Profile not found"));
+    }
+
+    public List<UserSummaryResponse> lookupByUserIds(List<UUID> userIds) {
+        if (userIds == null || userIds.isEmpty()) return List.of();
+        LinkedHashSet<UUID> uniqueIds = new LinkedHashSet<>(userIds);
+        return profileRepo.findByUserIdIn(uniqueIds).stream()
+                .map(UserSummaryResponse::from)
+                .toList();
     }
 
     @Transactional

@@ -3,6 +3,7 @@ package com.sankalp.expensetracker.user.controller;
 import com.sankalp.expensetracker.common.dto.ApiResponse;
 import com.sankalp.expensetracker.user.dto.UpdateProfileRequest;
 import com.sankalp.expensetracker.user.dto.UserProfileResponse;
+import com.sankalp.expensetracker.user.dto.UserSummaryResponse;
 import com.sankalp.expensetracker.user.entity.Friendship;
 import com.sankalp.expensetracker.user.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -46,6 +47,13 @@ public class UserController {
             @RequestParam(required = false) String q,
             @PageableDefault(size = 20) Pageable pageable) {
         return ResponseEntity.ok(ApiResponse.ok(userService.search(q, pageable)));
+    }
+
+    @GetMapping("/lookup")
+    @Operation(summary = "Lookup lightweight user display profiles by user id")
+    public ResponseEntity<ApiResponse<List<UserSummaryResponse>>> lookup(
+            @RequestParam List<UUID> userIds) {
+        return ResponseEntity.ok(ApiResponse.ok(userService.lookupByUserIds(userIds)));
     }
 
     @GetMapping("/{profileId}")

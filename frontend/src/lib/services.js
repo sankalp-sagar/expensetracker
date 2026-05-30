@@ -6,6 +6,12 @@ export const usersApi = {
   me: () => api.get("/api/users/me").then((r) => r.data.data),
   update: (payload) => api.put("/api/users/me", payload).then((r) => r.data.data),
   search: (q) => api.get(`/api/users/search?q=${encodeURIComponent(q || "")}`).then((r) => r.data.data),
+  lookup: (userIds = []) => {
+    const ids = [...new Set(userIds.filter(Boolean))];
+    if (ids.length === 0) return Promise.resolve([]);
+    const query = ids.map((id) => `userIds=${encodeURIComponent(id)}`).join("&");
+    return api.get(`/api/users/lookup?${query}`).then((r) => r.data.data);
+  },
   listFriends: () => api.get("/api/users/friends").then((r) => r.data.data),
   pending: () => api.get("/api/users/friends/pending").then((r) => r.data.data),
   addFriend: (addresseeId) => api.post(`/api/users/friends/${addresseeId}`).then((r) => r.data.data),

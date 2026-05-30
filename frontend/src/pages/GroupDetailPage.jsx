@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { toast } from "sonner";
-import { groupsApi, expensesApi, settlementsApi } from "@/lib/services";
+import { groupsApi, expensesApi, settlementsApi, usersApi } from "@/lib/services";
 import { useAuth } from "@/lib/auth";
 import { useBalanceSocket } from "@/lib/useBalanceSocket";
+import { buildUserProfileMap, userDisplayName } from "@/lib/userDisplay";
 import { ArrowLeft, Plus, Copy, Zap, Radio } from "lucide-react";
 import ExpenseFormDialog from "@/components/ExpenseFormDialog";
 import SettleUpDialog from "@/components/SettleUpDialog";
@@ -15,6 +16,7 @@ export default function GroupDetailPage() {
   const [expenses, setExpenses] = useState([]);
   const [balances, setBalances] = useState([]);
   const [suggestions, setSuggestions] = useState([]);
+  const [profilesByUserId, setProfilesByUserId] = useState({});
   const [createOpen, setCreateOpen] = useState(false);
   const [settleOpen, setSettleOpen] = useState(false);
   const [activeSuggestion, setActiveSuggestion] = useState(null);
@@ -32,10 +34,19 @@ export default function GroupDetailPage() {
       setExpenses(ex.content || []);
       setBalances(bs || []);
       setSuggestions(ss || []);
+
+      const memberIds = (g.members || []).map((member) => member.userId);
+      const fallbackProfiles = buildUserProfileMap([], user);
+      setProfilesByUserId(fallbackProfiles);
+      if (memberIds.length > 0) {
+        usersApi.lookup(memberIds)
+          .then((profiles) => setProfilesByUserId(buildUserProfileMap(profiles, user)))
+          .catch(() => setProfilesByUserId(fallbackProfiles));
+      }
     } catch (err) {
       toast.error("Failed to load group");
     }
-  }, [groupId]);
+  }, [groupId, user]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -57,6 +68,8 @@ export default function GroupDetailPage() {
   };
 
   if (!group) return <div className="text-zinc-500 text-sm">Loading…</div>;
+
+  const nameFor = (userId) => userDisplayName(userId, profilesByUserId);
 
   return (
     <div className="space-y-8" data-testid="group-detail-page">
@@ -107,10 +120,10 @@ export default function GroupDetailPage() {
           <ul>
             {suggestions.map((s, i) => (
               <li key={i} className="px-6 py-3 flex items-center justify-between border-b border-[#30A46C]/20 last:border-0" data-testid={`suggestion-${i}`}>
-                <div className="text-sm">
-                  <span className="font-mono text-xs text-zinc-500">{shortId(s.from)}</span>
+                <div className="text-sm min-w-0">
+                  <span title={s.from} className="inline-block max-w-[14rem] truncate align-bottom font-medium text-zinc-700">{nameFor(s.from)}</span>
                   <span className="mx-2 text-zinc-400">→</span>
-                  <span className="font-mono text-xs text-zinc-500">{shortId(s.to)}</span>
+                  <span title={s.to} className="inline-block max-w-[14rem] truncate align-bottom font-medium text-zinc-700">{nameFor(s.to)}</span>
                 </div>
                 <div className="flex items-center gap-3">
                   <span className="font-mono font-semibold text-[#30A46C]">${Number(s.amount).toFixed(2)}</span>
@@ -153,8 +166,8 @@ export default function GroupDetailPage() {
             <tbody>
               {balances.map((b, i) => (
                 <tr key={i} className="border-b border-zinc-100 hover:bg-zinc-50">
-                  <td className="px-6 py-2.5 font-mono text-xs text-zinc-700">{shortId(b.userA)}</td>
-                  <td className="px-6 py-2.5 font-mono text-xs text-zinc-700">{shortId(b.userB)}</td>
+                  <td title={b.userA} className="px-6 py-2.5 max-w-[14rem] truncate font-medium text-zinc-700">{nameFor(b.userA)}</td>
+                  <td title={b.userB} className="px-6 py-2.5 max-w-[14rem] truncate font-medium text-zinc-700">{nameFor(b.userB)}</td>
                   <td className={`px-6 py-2.5 text-right font-mono font-semibold ${Number(b.amount) > 0 ? "text-[#E5484D]" : "text-[#30A46C]"}`}>
                     {Number(b.amount).toFixed(2)}
                   </td>
@@ -189,7 +202,7 @@ export default function GroupDetailPage() {
                 <tr key={e.id} className="border-b border-zinc-100 hover:bg-zinc-50">
                   <td className="px-6 py-2.5 font-mono text-xs text-zinc-500">{e.expenseDate}</td>
                   <td className="px-6 py-2.5 text-zinc-950">{e.description}</td>
-                  <td className="px-6 py-2.5 font-mono text-xs text-zinc-500">{shortId(e.payerId)}</td>
+                  <td title={e.payerId} className="px-6 py-2.5 max-w-[14rem] truncate font-medium text-zinc-700">{nameFor(e.payerId)}</td>
                   <td className="px-6 py-2.5 text-xs font-mono text-zinc-500">{e.splitType}</td>
                   <td className="px-6 py-2.5 text-right font-mono font-semibold text-zinc-950">
                     {e.currency} {Number(e.amount).toFixed(2)}
@@ -206,6 +219,7 @@ export default function GroupDetailPage() {
         onOpenChange={setCreateOpen}
         group={group}
         payerId={user?.userId}
+        profilesByUserId={profilesByUserId}
         onCreated={load}
       />
       <SettleUpDialog
@@ -214,13 +228,9 @@ export default function GroupDetailPage() {
         group={group}
         currentUserId={user?.userId}
         suggestion={activeSuggestion}
+        profilesByUserId={profilesByUserId}
         onSettled={load}
       />
     </div>
   );
-}
-
-function shortId(uuid) {
-  if (!uuid) return "—";
-  return uuid.split("-")[0];
 }

@@ -8,6 +8,8 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -15,6 +17,7 @@ import java.util.UUID;
 public interface UserProfileRepository extends JpaRepository<UserProfile, UUID> {
     Optional<UserProfile> findByUserId(UUID userId);
     Optional<UserProfile> findByEmailIgnoreCase(String email);
+    List<UserProfile> findByUserIdIn(Collection<UUID> userIds);
 
     @Query("""
             select p from UserProfile p
