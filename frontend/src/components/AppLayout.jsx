@@ -154,7 +154,7 @@ export default function AppLayout() {
           </div>
         </header>
         <main className="flex-1 overflow-auto">
-          <div className="p-8 max-w-[1280px]">
+          <div className="p-8 w-3/4 min-w-0 mx-auto">
             <Outlet />
           </div>
         </main>

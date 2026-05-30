@@ -3,7 +3,6 @@ package com.sankalp.expensetracker.user.config;
 import com.sankalp.expensetracker.common.security.CorrelationIdFilter;
 import com.sankalp.expensetracker.common.security.JwtAuthenticationFilter;
 import com.sankalp.expensetracker.common.security.JwtUtil;
-import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -13,7 +12,6 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 @Configuration
-@EnableCaching
 public class SecurityConfig {
 
     @Bean

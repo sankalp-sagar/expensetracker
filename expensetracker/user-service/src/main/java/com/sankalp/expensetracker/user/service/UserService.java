@@ -13,8 +13,6 @@ import com.sankalp.expensetracker.user.repository.FriendshipRepository;
 import com.sankalp.expensetracker.user.repository.UserProfileRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.cache.annotation.CacheEvict;
-import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.kafka.annotation.KafkaListener;
@@ -44,7 +42,6 @@ public class UserService {
                 );
     }
 
-    @Cacheable(value = "userProfiles", key = "#userId")
     @Transactional
     public UserProfileResponse getProfile(UUID userId, String email, String fullName) {
         return UserProfileResponse.from(findOrCreateProfile(userId, email, fullName));
@@ -59,7 +56,6 @@ public class UserService {
     }
 
     @Transactional
-    @CacheEvict(value = "userProfiles", key = "#userId")
     public UserProfileResponse updateProfile(UUID userId, String email, String fullName, UpdateProfileRequest req) {
         UserProfile p = findOrCreateProfile(userId, email, fullName);
         if (req.avatarUrl() != null) p.setAvatarUrl(req.avatarUrl());

@@ -1,12 +1,11 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { usersApi } from "@/lib/services";
+import { normalizeCurrency } from "@/lib/currency";
 
 export default function SettingsPage() {
-  const [profile, setProfile] = useState(null);
   const [form, setForm] = useState({
-    statusMessage: "", phone: "",
-    preferredCurrency: "USD", preferredLanguage: "en", privacy: "PUBLIC",
+    preferredCurrency: "USD",
   });
   const [saving, setSaving] = useState(false);
 
@@ -14,15 +13,12 @@ export default function SettingsPage() {
     (async () => {
       try {
         const p = await usersApi.me();
-        setProfile(p);
         setForm({
-          statusMessage: p.statusMessage || "",
-          phone: p.phone || "",
-          preferredCurrency: p.preferredCurrency || "USD",
-          preferredLanguage: p.preferredLanguage || "en",
-          privacy: p.privacy || "PUBLIC",
+          preferredCurrency: normalizeCurrency(p?.preferredCurrency),
         });
-      } catch { /* unauthenticated handled by interceptor */ }
+      } catch (err) {
+        toast.error(err.response?.data?.message || "Failed to load settings");
+      }
     })();
   }, []);
 
@@ -30,74 +26,50 @@ export default function SettingsPage() {
 
   const save = async (e) => {
     e.preventDefault();
+    const nextCurrency = form.preferredCurrency.trim().toUpperCase();
+    if (!/^[A-Z]{3}$/.test(nextCurrency)) {
+      toast.error("Use a 3-letter currency code");
+      return;
+    }
+
     setSaving(true);
     try {
-      const updated = await usersApi.update(form);
-      setProfile(updated);
-      toast.success("Profile saved");
+      const updated = await usersApi.update({
+        preferredCurrency: nextCurrency,
+      });
+      setForm({
+        preferredCurrency: normalizeCurrency(updated?.preferredCurrency, nextCurrency),
+      });
+      toast.success("Settings saved");
     } catch (err) {
       toast.error(err.response?.data?.message || "Save failed");
     } finally { setSaving(false); }
   };
 
   return (
-    <div className="space-y-8 max-w-2xl" data-testid="settings-page">
+    <div className="space-y-8 w-full" data-testid="settings-page">
       <div>
         <div className="text-xs uppercase tracking-[0.2em] text-zinc-500 font-mono mb-1.5">/settings</div>
         <h1 className="font-display font-black text-4xl tracking-tight text-zinc-950">Settings</h1>
-        <p className="text-zinc-500 mt-2 text-sm">Profile and preferences.</p>
       </div>
 
-      <form onSubmit={save} className="border border-zinc-200 bg-white p-8 rounded-sm space-y-5">
-        <Field label="Full name" hint="from signup">
-          <input
-            data-testid="settings-fullname"
-            value={profile?.fullName || ""}
-            disabled
-            className="w-full px-3 py-2 border border-zinc-200 bg-zinc-50 rounded-sm text-sm text-zinc-500"
-          />
-        </Field>
-        <Field label="Email" hint="immutable">
-          <input value={profile?.email || ""} disabled className="w-full px-3 py-2 border border-zinc-200 bg-zinc-50 rounded-sm font-mono text-sm text-zinc-500" />
-        </Field>
-        <Field label="Status message">
-          <input
-            data-testid="settings-status"
-            value={form.statusMessage}
-            onChange={(e) => set("statusMessage", e.target.value)}
-            className="w-full px-3 py-2 border border-zinc-300 rounded-sm text-sm focus:outline-none focus:border-[#0055FF] focus:ring-1 focus:ring-[#0055FF]"
-            placeholder="What are you up to?"
-          />
-        </Field>
-        <div className="grid grid-cols-2 gap-4">
-          <Field label="Preferred currency">
+      <form onSubmit={save} className="border border-zinc-200 bg-white rounded-sm">
+        <div className="flex flex-col gap-4 p-5 sm:flex-row sm:items-end sm:justify-between">
+          <Field label="Default currency">
             <input
               data-testid="settings-currency"
               value={form.preferredCurrency}
               onChange={(e) => set("preferredCurrency", e.target.value.toUpperCase())}
               maxLength={3}
-              className="w-full px-3 py-2 border border-zinc-300 rounded-sm font-mono text-sm uppercase focus:outline-none focus:border-[#0055FF]"
+              pattern="[A-Z]{3}"
+              className="w-32 px-3 py-2 border border-zinc-300 rounded-sm font-mono text-sm uppercase focus:outline-none focus:border-[#0055FF] focus:ring-1 focus:ring-[#0055FF]"
             />
           </Field>
-          <Field label="Privacy">
-            <select
-              data-testid="settings-privacy"
-              value={form.privacy}
-              onChange={(e) => set("privacy", e.target.value)}
-              className="w-full px-3 py-2 border border-zinc-300 rounded-sm text-sm focus:outline-none focus:border-[#0055FF]"
-            >
-              <option>PUBLIC</option>
-              <option>FRIENDS_ONLY</option>
-              <option>PRIVATE</option>
-            </select>
-          </Field>
-        </div>
-        <div>
           <button
             type="submit"
             disabled={saving}
             data-testid="settings-save"
-            className="bg-[#0055FF] hover:bg-[#0044CC] text-white px-4 py-2 rounded-sm text-sm font-medium disabled:opacity-50 transition-all hover:-translate-y-[1px]"
+            className="bg-[#0055FF] hover:bg-[#0044CC] text-white px-4 py-2 rounded-sm text-sm font-medium disabled:opacity-50 transition-all hover:-translate-y-[1px] sm:mb-0"
           >
             {saving ? "Saving…" : "Save changes"}
           </button>
