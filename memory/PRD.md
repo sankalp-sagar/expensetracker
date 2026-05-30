@@ -1,7 +1,7 @@
 # ExpenseTracker — Product Requirements Document
 
 ## Original Problem Statement
-Build a production-grade distributed expense sharing and settlement platform using Java, Spring Boot, and Microservices Architecture. Application name: **expensetracker**. Package: `com.sankalp.expensetracker`. Must not depend on Emergent platform after the app is built. Tech: Maven, latest Java (21 LTS), Spring Boot 3.4, PostgreSQL primary DB, Kafka, Redis, Spring Cloud Gateway/Eureka/Config, Docker, K8s.
+Build a production-grade distributed expense sharing and settlement platform using Java, Spring Boot, and Microservices Architecture. Application name: **expensetracker**. Package: `com.sankalp.expensetracker`. The application should be self-contained after build and deploy without depending on a hosted app-builder platform. Tech: Maven, latest Java (21 LTS), Spring Boot 3.4, PostgreSQL primary DB, Kafka, Redis, Spring Cloud Gateway/Eureka/Config, Docker, K8s.
 
 ## Architecture
 - 8 microservices: eureka-server, config-server, api-gateway, auth-service, user-service, group-service, expense-service, settlement-service, notification-service, analytics-service

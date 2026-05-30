@@ -1,7 +1,7 @@
 import axios from "axios";
 
-// In the Emergent preview no Java backend is reachable, so we default to localhost:8080
-// (where docker compose exposes the gateway). Override via REACT_APP_API_BASE.
+// Default to the local API gateway exposed by docker compose.
+// Override with REACT_APP_API_BASE in deployed environments.
 const API_BASE = process.env.REACT_APP_API_BASE || "http://localhost:8080";
 
 export const api = axios.create({
