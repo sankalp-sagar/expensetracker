@@ -5,7 +5,7 @@ import { usersApi } from "@/lib/services";
 export default function SettingsPage() {
   const [profile, setProfile] = useState(null);
   const [form, setForm] = useState({
-    fullName: "", statusMessage: "", phone: "",
+    statusMessage: "", phone: "",
     preferredCurrency: "USD", preferredLanguage: "en", privacy: "PUBLIC",
   });
   const [saving, setSaving] = useState(false);
@@ -16,7 +16,6 @@ export default function SettingsPage() {
         const p = await usersApi.me();
         setProfile(p);
         setForm({
-          fullName: p.fullName || "",
           statusMessage: p.statusMessage || "",
           phone: p.phone || "",
           preferredCurrency: p.preferredCurrency || "USD",
@@ -50,12 +49,12 @@ export default function SettingsPage() {
       </div>
 
       <form onSubmit={save} className="border border-zinc-200 bg-white p-8 rounded-sm space-y-5">
-        <Field label="Full name">
+        <Field label="Full name" hint="from signup">
           <input
             data-testid="settings-fullname"
-            value={form.fullName}
-            onChange={(e) => set("fullName", e.target.value)}
-            className="w-full px-3 py-2 border border-zinc-300 rounded-sm text-sm focus:outline-none focus:border-[#0055FF] focus:ring-1 focus:ring-[#0055FF]"
+            value={profile?.fullName || ""}
+            disabled
+            className="w-full px-3 py-2 border border-zinc-200 bg-zinc-50 rounded-sm text-sm text-zinc-500"
           />
         </Field>
         <Field label="Email" hint="immutable">

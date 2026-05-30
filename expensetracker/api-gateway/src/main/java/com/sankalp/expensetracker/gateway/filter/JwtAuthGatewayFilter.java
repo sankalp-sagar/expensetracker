@@ -26,7 +26,7 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * Pre-routing JWT validation. Public paths skipped; valid tokens add X-User-Id / X-User-Email / X-User-Roles headers
+ * Pre-routing JWT validation. Public paths skipped; valid tokens add user identity headers
  * to the forwarded request so downstream services can trust without redoing parsing.
  */
 @Slf4j
@@ -78,6 +78,7 @@ public class JwtAuthGatewayFilter implements GlobalFilter, Ordered {
             }
             UUID uid = UUID.fromString(c.getSubject());
             String email = (String) c.get("email");
+            String fullName = (String) c.get("fullName");
             Object rolesObj = c.get("roles");
             String roles = rolesObj instanceof List<?> list
                     ? String.join(",", list.stream().map(String::valueOf).toList())
@@ -92,9 +93,11 @@ public class JwtAuthGatewayFilter implements GlobalFilter, Ordered {
                                 .headers(headers -> {
                                     headers.remove("X-User-Id");
                                     headers.remove("X-User-Email");
+                                    headers.remove("X-User-Full-Name");
                                     headers.remove("X-User-Roles");
                                     headers.set("X-User-Id", uid.toString());
                                     headers.set("X-User-Email", email == null ? "" : email);
+                                    headers.set("X-User-Full-Name", fullName == null ? "" : fullName);
                                     headers.set("X-User-Roles", roles);
                                 })
                                 .build();

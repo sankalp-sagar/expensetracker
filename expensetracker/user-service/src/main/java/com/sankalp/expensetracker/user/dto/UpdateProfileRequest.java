@@ -4,7 +4,6 @@ import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
 public record UpdateProfileRequest(
-        @Size(max = 150) String fullName,
         @Size(max = 500) String avatarUrl,
         @Size(max = 280) String statusMessage,
         @Size(max = 30) String phone,

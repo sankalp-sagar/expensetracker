@@ -134,6 +134,12 @@ cp .env.example .env       # tweak JWT_SECRET in production
 docker compose up -d --build
 ```
 
+To wipe local Postgres data and recreate every service database from migrations:
+
+```bash
+scripts/reset-dbs.sh --yes
+```
+
 Wait ~60 seconds for everything to register, then:
 
 - API Gateway: <http://localhost:8080>

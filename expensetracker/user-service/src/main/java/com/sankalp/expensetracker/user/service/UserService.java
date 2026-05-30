@@ -37,20 +37,17 @@ public class UserService {
     @Transactional
     public void onUserRegistered(Events.UserRegisteredEvent event) {
         log.info("Provisioning profile for user {}", event.userId());
-        if (profileRepo.findByUserId(event.userId()).isPresent()) return;
-        UserProfile p = UserProfile.builder()
-                .userId(event.userId())
-                .email(event.email())
-                .fullName(event.fullName())
-                .build();
-        profileRepo.save(p);
+        profileRepo.findByUserId(event.userId())
+                .ifPresentOrElse(
+                        profile -> syncSignupFields(profile, event.email(), event.fullName()),
+                        () -> profileRepo.save(newProfile(event.userId(), event.email(), event.fullName()))
+                );
     }
 
     @Cacheable(value = "userProfiles", key = "#userId")
-    public UserProfileResponse getProfile(UUID userId) {
-        return profileRepo.findByUserId(userId)
-                .map(UserProfileResponse::from)
-                .orElseThrow(() -> new NotFoundException("Profile not found"));
+    @Transactional
+    public UserProfileResponse getProfile(UUID userId, String email, String fullName) {
+        return UserProfileResponse.from(findOrCreateProfile(userId, email, fullName));
     }
 
     public List<UserSummaryResponse> lookupByUserIds(List<UUID> userIds) {
@@ -63,10 +60,8 @@ public class UserService {
 
     @Transactional
     @CacheEvict(value = "userProfiles", key = "#userId")
-    public UserProfileResponse updateProfile(UUID userId, UpdateProfileRequest req) {
-        UserProfile p = profileRepo.findByUserId(userId)
-                .orElseThrow(() -> new NotFoundException("Profile not found"));
-        if (req.fullName() != null) p.setFullName(req.fullName());
+    public UserProfileResponse updateProfile(UUID userId, String email, String fullName, UpdateProfileRequest req) {
+        UserProfile p = findOrCreateProfile(userId, email, fullName);
         if (req.avatarUrl() != null) p.setAvatarUrl(req.avatarUrl());
         if (req.statusMessage() != null) p.setStatusMessage(req.statusMessage());
         if (req.phone() != null) p.setPhone(req.phone());
@@ -135,5 +130,58 @@ public class UserService {
 
     public List<Friendship> listPendingRequests(UUID userId) {
         return friendshipRepo.findPendingFor(userId);
+    }
+
+    private UserProfile findOrCreateProfile(UUID userId, String email, String fullName) {
+        return profileRepo.findByUserId(userId)
+                .map(profile -> syncSignupFields(profile, email, fullName))
+                .orElseGet(() -> profileRepo.save(newProfile(userId, email, fullName)));
+    }
+
+    private UserProfile newProfile(UUID userId, String email, String fullName) {
+        String normalizedEmail = normalizeRequiredEmail(email);
+        return UserProfile.builder()
+                .userId(userId)
+                .email(normalizedEmail)
+                .fullName(normalizeName(fullName, normalizedEmail))
+                .build();
+    }
+
+    private UserProfile syncSignupFields(UserProfile profile, String email, String fullName) {
+        boolean changed = false;
+        String normalizedEmail = normalizeOptional(email);
+        if (!hasText(profile.getEmail()) && hasText(normalizedEmail)) {
+            profile.setEmail(normalizedEmail.toLowerCase());
+            changed = true;
+        }
+        if (!hasText(profile.getFullName())) {
+            String normalizedName = normalizeName(fullName, profile.getEmail());
+            if (hasText(normalizedName)) {
+                profile.setFullName(normalizedName);
+                changed = true;
+            }
+        }
+        return changed ? profileRepo.save(profile) : profile;
+    }
+
+    private String normalizeRequiredEmail(String email) {
+        String normalized = normalizeOptional(email);
+        if (!hasText(normalized)) {
+            throw new NotFoundException("Profile not found");
+        }
+        return normalized.toLowerCase();
+    }
+
+    private String normalizeName(String fullName, String fallbackEmail) {
+        String normalized = normalizeOptional(fullName);
+        return hasText(normalized) ? normalized : normalizeOptional(fallbackEmail);
+    }
+
+    private String normalizeOptional(String value) {
+        return value == null ? null : value.trim();
+    }
+
+    private boolean hasText(String value) {
+        return value != null && !value.isBlank();
     }
 }
