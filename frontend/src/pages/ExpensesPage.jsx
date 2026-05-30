@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { expensesApi } from "@/lib/services";
+import { formatMoney } from "@/lib/currency";
 
 export default function ExpensesPage() {
   const [expenses, setExpenses] = useState([]);
@@ -47,7 +48,7 @@ export default function ExpensesPage() {
                   </td>
                   <td className="px-6 py-3 text-xs font-mono text-zinc-500">{e.splitType}</td>
                   <td className="px-6 py-3 text-right font-mono font-semibold text-zinc-950">
-                    {e.currency} {Number(e.amount).toFixed(2)}
+                    {formatMoney(e.amount, e.currency)}
                   </td>
                 </tr>
               ))}

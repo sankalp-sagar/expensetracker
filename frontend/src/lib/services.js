@@ -28,9 +28,9 @@ export const groupsApi = {
 
 export const expensesApi = {
   create: (payload) => api.post("/api/expenses", payload).then((r) => r.data.data),
-  mine: (page = 0) => api.get(`/api/expenses/me?page=${page}&size=20`).then((r) => r.data.data),
-  byGroup: (groupId, page = 0) =>
-    api.get(`/api/expenses/group/${groupId}?page=${page}&size=50`).then((r) => r.data.data),
+  mine: (page = 0, size = 20) => api.get(`/api/expenses/me?page=${page}&size=${size}`).then((r) => r.data.data),
+  byGroup: (groupId, page = 0, size = 50) =>
+    api.get(`/api/expenses/group/${groupId}?page=${page}&size=${size}`).then((r) => r.data.data),
   remove: (id) => api.delete(`/api/expenses/${id}`).then((r) => r.data.data),
   categories: () => api.get("/api/categories").then((r) => r.data.data),
   uploadReceipt: (expenseId, file) => {

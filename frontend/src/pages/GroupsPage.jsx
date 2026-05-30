@@ -1,14 +1,16 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
-import { groupsApi } from "@/lib/services";
+import { groupsApi, usersApi } from "@/lib/services";
+import { normalizeCurrency } from "@/lib/currency";
 import { Plus, Users, ArrowRight, Hash } from "lucide-react";
 import {
-  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger,
+  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 
 export default function GroupsPage() {
   const [groups, setGroups] = useState([]);
+  const [preferredCurrency, setPreferredCurrency] = useState("USD");
   const [createOpen, setCreateOpen] = useState(false);
   const [joinOpen, setJoinOpen] = useState(false);
 
@@ -22,6 +24,12 @@ export default function GroupsPage() {
     }
   };
   useEffect(() => { load(); }, []);
+
+  useEffect(() => {
+    usersApi.me()
+      .then((profile) => setPreferredCurrency(normalizeCurrency(profile?.preferredCurrency)))
+      .catch(() => {});
+  }, []);
 
   return (
     <div className="space-y-8" data-testid="groups-page">
@@ -85,23 +93,32 @@ export default function GroupsPage() {
         </div>
       )}
 
-      <CreateGroupDialog open={createOpen} onOpenChange={setCreateOpen} onCreated={load} />
+      <CreateGroupDialog
+        open={createOpen}
+        onOpenChange={setCreateOpen}
+        preferredCurrency={preferredCurrency}
+        onCreated={load}
+      />
       <JoinDialog open={joinOpen} onOpenChange={setJoinOpen} onJoined={load} />
     </div>
   );
 }
 
-function CreateGroupDialog({ open, onOpenChange, onCreated }) {
+function CreateGroupDialog({ open, onOpenChange, preferredCurrency, onCreated }) {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [currency, setCurrency] = useState("USD");
+  const [currency, setCurrency] = useState(normalizeCurrency(preferredCurrency));
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (open) setCurrency(normalizeCurrency(preferredCurrency));
+  }, [open, preferredCurrency]);
 
   const submit = async (e) => {
     e.preventDefault();
     setSaving(true);
     try {
-      await groupsApi.create({ name, description, defaultCurrency: currency });
+      await groupsApi.create({ name, description, defaultCurrency: normalizeCurrency(currency) });
       toast.success("Group created");
       onCreated?.();
       onOpenChange(false);

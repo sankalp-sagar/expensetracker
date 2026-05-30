@@ -1,6 +1,6 @@
 export function shortUserId(userId) {
-  if (!userId) return "—";
-  return userId.split("-")[0];
+  if (!userId) return "";
+  return String(userId).split("-")[0];
 }
 
 export function buildUserProfileMap(profiles = [], currentUser) {
@@ -23,7 +23,7 @@ export function buildUserProfileMap(profiles = [], currentUser) {
 export function userDisplayName(userId, profilesByUserId = {}) {
   if (!userId) return "—";
   const profile = profilesByUserId[userId];
-  return profile?.fullName?.trim() || profile?.email || shortUserId(userId);
+  return profile?.fullName?.trim() || profile?.email || "Unknown member";
 }
 
 export function userOptionLabel(userId, profilesByUserId = {}, currentUserId) {

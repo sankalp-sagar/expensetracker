@@ -5,6 +5,8 @@ import { groupsApi, expensesApi, settlementsApi, usersApi } from "@/lib/services
 import { useAuth } from "@/lib/auth";
 import { useBalanceSocket } from "@/lib/useBalanceSocket";
 import { buildUserProfileMap, userDisplayName } from "@/lib/userDisplay";
+import { formatMoney } from "@/lib/currency";
+import { balanceDirection } from "@/lib/settlements";
 import { ArrowLeft, Plus, Copy, Zap, Radio } from "lucide-react";
 import ExpenseFormDialog from "@/components/ExpenseFormDialog";
 import SettleUpDialog from "@/components/SettleUpDialog";
@@ -16,6 +18,7 @@ export default function GroupDetailPage() {
   const [expenses, setExpenses] = useState([]);
   const [balances, setBalances] = useState([]);
   const [suggestions, setSuggestions] = useState([]);
+  const [settlementHistory, setSettlementHistory] = useState([]);
   const [profilesByUserId, setProfilesByUserId] = useState({});
   const [createOpen, setCreateOpen] = useState(false);
   const [settleOpen, setSettleOpen] = useState(false);
@@ -24,18 +27,20 @@ export default function GroupDetailPage() {
 
   const load = useCallback(async () => {
     try {
-      const [g, ex, bs, ss] = await Promise.all([
+      const [g, ex, bs, ss, sh] = await Promise.all([
         groupsApi.get(groupId),
         expensesApi.byGroup(groupId).catch(() => ({ content: [] })),
         settlementsApi.groupBalances(groupId).catch(() => []),
         settlementsApi.suggestions(groupId).catch(() => []),
+        settlementsApi.groupHistory(groupId).catch(() => ({ content: [] })),
       ]);
       setGroup(g);
       setExpenses(ex.content || []);
       setBalances(bs || []);
       setSuggestions(ss || []);
+      setSettlementHistory(sh.content || []);
 
-      const memberIds = (g.members || []).map((member) => member.userId);
+      const memberIds = collectUserIds(g, ex.content || [], bs || [], ss || [], sh.content || [], user?.userId);
       const fallbackProfiles = buildUserProfileMap([], user);
       setProfilesByUserId(fallbackProfiles);
       if (memberIds.length > 0) {
@@ -57,6 +62,9 @@ export default function GroupDetailPage() {
       setLiveTick((n) => n + 1);
       // re-fetch suggestions because they depend on balances
       settlementsApi.suggestions(groupId).then(setSuggestions).catch(() => {});
+      settlementsApi.groupHistory(groupId)
+        .then((history) => setSettlementHistory(history.content || []))
+        .catch(() => {});
     }
   }, [groupId]);
   useBalanceSocket(groupId, onLiveBalance);
@@ -115,7 +123,9 @@ export default function GroupDetailPage() {
           <div className="px-6 py-3 border-b border-[#30A46C]/30 flex items-center gap-2">
             <Zap size={14} className="text-[#30A46C]" />
             <span className="font-display font-bold text-sm text-zinc-950">Smart settle-up</span>
-            <span className="text-xs text-zinc-500 ml-2 font-mono">({suggestions.length} payments to clear all debts)</span>
+            <span className="text-xs text-zinc-500 ml-2 font-mono">
+              ({suggestions.length} {suggestions.length === 1 ? "payment" : "payments"} to clear all debts)
+            </span>
           </div>
           <ul>
             {suggestions.map((s, i) => (
@@ -126,7 +136,7 @@ export default function GroupDetailPage() {
                   <span title={s.to} className="inline-block max-w-[14rem] truncate align-bottom font-medium text-zinc-700">{nameFor(s.to)}</span>
                 </div>
                 <div className="flex items-center gap-3">
-                  <span className="font-mono font-semibold text-[#30A46C]">${Number(s.amount).toFixed(2)}</span>
+                  <span className="font-mono font-semibold text-[#30A46C]">{formatMoney(s.amount, group.defaultCurrency)}</span>
                   {(s.from === user?.userId || s.to === user?.userId) && (
                     <button
                       onClick={() => { setActiveSuggestion(s); setSettleOpen(true); }}
@@ -157,21 +167,59 @@ export default function GroupDetailPage() {
           <table className="w-full text-sm" data-testid="balances-table">
             <thead>
               <tr className="text-[10px] uppercase tracking-wider text-zinc-500 border-b border-zinc-200">
-                <th className="px-6 py-2.5 text-left">User A</th>
-                <th className="px-6 py-2.5 text-left">User B</th>
+                <th className="px-6 py-2.5 text-left">Owes</th>
+                <th className="px-6 py-2.5 text-left">Gets paid</th>
                 <th className="px-6 py-2.5 text-right">Amount</th>
-                <th className="px-6 py-2.5 text-right">Currency</th>
               </tr>
             </thead>
             <tbody>
-              {balances.map((b, i) => (
-                <tr key={i} className="border-b border-zinc-100 hover:bg-zinc-50">
-                  <td title={b.userA} className="px-6 py-2.5 max-w-[14rem] truncate font-medium text-zinc-700">{nameFor(b.userA)}</td>
-                  <td title={b.userB} className="px-6 py-2.5 max-w-[14rem] truncate font-medium text-zinc-700">{nameFor(b.userB)}</td>
-                  <td className={`px-6 py-2.5 text-right font-mono font-semibold ${Number(b.amount) > 0 ? "text-[#E5484D]" : "text-[#30A46C]"}`}>
-                    {Number(b.amount).toFixed(2)}
+              {balances.map((b, i) => {
+                const direction = balanceDirection(b);
+                return (
+                  <tr key={i} className="border-b border-zinc-100 hover:bg-zinc-50">
+                    <td title={direction.debtorId} className="px-6 py-2.5 max-w-[14rem] truncate font-medium text-zinc-700">{nameFor(direction.debtorId)}</td>
+                    <td title={direction.creditorId} className="px-6 py-2.5 max-w-[14rem] truncate font-medium text-zinc-700">{nameFor(direction.creditorId)}</td>
+                    <td className="px-6 py-2.5 text-right font-mono font-semibold text-[#E5484D]">
+                      {formatMoney(direction.amount, direction.currency || group.defaultCurrency)}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        )}
+      </div>
+
+      {/* Settlement history */}
+      <div className="border border-zinc-200 bg-white rounded-sm" data-testid="settlement-history-card">
+        <div className="px-6 py-4 border-b border-zinc-200">
+          <h2 className="font-display font-bold text-lg text-zinc-950">Recorded payments</h2>
+        </div>
+        {settlementHistory.length === 0 ? (
+          <div className="p-6 text-sm text-zinc-500">No payments recorded yet</div>
+        ) : (
+          <table className="w-full text-sm" data-testid="settlement-history-table">
+            <thead>
+              <tr className="text-[10px] uppercase tracking-wider text-zinc-500 border-b border-zinc-200">
+                <th className="px-6 py-2.5 text-left">Date</th>
+                <th className="px-6 py-2.5 text-left">Paid by</th>
+                <th className="px-6 py-2.5 text-left">Received by</th>
+                <th className="px-6 py-2.5 text-left">Method</th>
+                <th className="px-6 py-2.5 text-right">Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              {settlementHistory.slice(0, 8).map((settlement) => (
+                <tr key={settlement.id} className="border-b border-zinc-100 hover:bg-zinc-50">
+                  <td className="px-6 py-2.5 font-mono text-xs text-zinc-500">
+                    {formatDateTime(settlement.settledAt || settlement.createdAt)}
                   </td>
-                  <td className="px-6 py-2.5 text-right font-mono text-xs text-zinc-500">{b.currency}</td>
+                  <td title={settlement.payerId} className="px-6 py-2.5 max-w-[14rem] truncate font-medium text-zinc-700">{nameFor(settlement.payerId)}</td>
+                  <td title={settlement.payeeId} className="px-6 py-2.5 max-w-[14rem] truncate font-medium text-zinc-700">{nameFor(settlement.payeeId)}</td>
+                  <td className="px-6 py-2.5 text-xs font-mono text-zinc-500">{settlement.method || "OTHER"}</td>
+                  <td className="px-6 py-2.5 text-right font-mono font-semibold text-zinc-950">
+                    {formatMoney(settlement.amount, settlement.currency || group.defaultCurrency)}
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -205,7 +253,7 @@ export default function GroupDetailPage() {
                   <td title={e.payerId} className="px-6 py-2.5 max-w-[14rem] truncate font-medium text-zinc-700">{nameFor(e.payerId)}</td>
                   <td className="px-6 py-2.5 text-xs font-mono text-zinc-500">{e.splitType}</td>
                   <td className="px-6 py-2.5 text-right font-mono font-semibold text-zinc-950">
-                    {e.currency} {Number(e.amount).toFixed(2)}
+                    {formatMoney(e.amount, e.currency)}
                   </td>
                 </tr>
               ))}
@@ -228,9 +276,46 @@ export default function GroupDetailPage() {
         group={group}
         currentUserId={user?.userId}
         suggestion={activeSuggestion}
+        balances={balances}
         profilesByUserId={profilesByUserId}
         onSettled={load}
       />
     </div>
   );
+}
+
+function collectUserIds(group, expenses, balances, suggestions, settlements, currentUserId) {
+  const ids = new Set([currentUserId].filter(Boolean));
+
+  for (const member of group?.members || []) ids.add(member.userId);
+  for (const expense of expenses || []) {
+    ids.add(expense.payerId);
+    for (const split of expense.splits || []) ids.add(split.userId);
+  }
+  for (const balance of balances || []) {
+    ids.add(balance.userA);
+    ids.add(balance.userB);
+  }
+  for (const suggestion of suggestions || []) {
+    ids.add(suggestion.from);
+    ids.add(suggestion.to);
+  }
+  for (const settlement of settlements || []) {
+    ids.add(settlement.payerId);
+    ids.add(settlement.payeeId);
+  }
+
+  return [...ids].filter(Boolean);
+}
+
+function formatDateTime(value) {
+  if (!value) return "—";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "—";
+  return date.toLocaleString(undefined, {
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 }

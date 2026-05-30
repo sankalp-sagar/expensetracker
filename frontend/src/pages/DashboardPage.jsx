@@ -1,36 +1,55 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { analyticsApi, groupsApi, expensesApi } from "@/lib/services";
+import { groupsApi, expensesApi, usersApi } from "@/lib/services";
 import { useAuth } from "@/lib/auth";
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, CartesianGrid } from "recharts";
 import { TrendingUp, Users, Receipt, AlertCircle } from "lucide-react";
+import { formatMoney, mostCommonCurrency, normalizeCurrency } from "@/lib/currency";
 
 export default function DashboardPage() {
   const { user } = useAuth();
   const [monthly, setMonthly] = useState([]);
   const [groups, setGroups] = useState([]);
   const [recentExpenses, setRecentExpenses] = useState([]);
+  const [currency, setCurrency] = useState("USD");
+  const [totalThisMonth, setTotalThisMonth] = useState(0);
+  const [totalTracked, setTotalTracked] = useState(0);
+  const [mixedCurrency, setMixedCurrency] = useState(false);
   const [error, setError] = useState(null);
 
   useEffect(() => {
     (async () => {
       try {
-        const [m, g, e] = await Promise.all([
-          analyticsApi.monthly().catch(() => []),
+        const [g, e, profile] = await Promise.all([
           groupsApi.mine().catch(() => []),
-          expensesApi.mine().catch(() => ({ content: [] })),
+          expensesApi.mine(0, 500).catch(() => ({ content: [] })),
+          usersApi.me().catch(() => null),
         ]);
-        setMonthly((m || []).slice(0, 6).reverse());
+        const expenses = e.content || [];
+        const expenseCurrencies = [...new Set(expenses.map((expense) => normalizeCurrency(expense.currency)))];
+        const displayCurrency = expenseCurrencies.length === 1
+          ? expenseCurrencies[0]
+          : normalizeCurrency(
+              profile?.preferredCurrency ||
+              mostCommonCurrency((g || []).map((group) => group.defaultCurrency)) ||
+              "USD"
+            );
+        const dashboardExpenses = expenses.filter((expense) => normalizeCurrency(expense.currency) === displayCurrency);
+        const monthlyTotals = buildMonthlyTotals(dashboardExpenses);
+        const currentMonth = new Date().toISOString().slice(0, 7);
+
+        setCurrency(displayCurrency);
+        setMixedCurrency(expenseCurrencies.length > 1);
+        setTotalThisMonth(monthlyTotals.find((m) => m.month === currentMonth)?.total || 0);
+        setTotalTracked(dashboardExpenses.reduce((sum, expense) => sum + Number(expense.amount || 0), 0));
+        setMonthly(monthlyTotals.slice(-6));
         setGroups(g || []);
-        setRecentExpenses(e.content || []);
+        setRecentExpenses(expenses);
       } catch (err) {
         setError(err.message);
       }
     })();
   }, []);
-
-  const totalThisMonth = monthly.length ? monthly[monthly.length - 1]?.total || 0 : 0;
-  const totalAllTime = monthly.reduce((s, m) => s + Number(m.total || 0), 0);
 
   return (
     <div className="space-y-8" data-testid="dashboard-root">
@@ -58,17 +77,19 @@ export default function DashboardPage() {
 
       {/* KPI row */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-px bg-zinc-200 border border-zinc-200 rounded-sm overflow-hidden" data-testid="dashboard-kpis">
-        <KPI label="This month" value={totalThisMonth} icon={TrendingUp} accent />
-        <KPI label="Total tracked" value={totalAllTime} icon={Receipt} />
-        <KPI label="Active groups" value={groups.length} icon={Users} count />
+        <KPI label="This month" value={formatMoney(totalThisMonth, currency)} icon={TrendingUp} accent />
+        <KPI label="Total tracked" value={formatMoney(totalTracked, currency)} icon={Receipt} />
+        <KPI label="Active groups" value={groups.length} icon={Users} />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Monthly chart */}
         <div className="lg:col-span-2 border border-zinc-200 bg-white p-6 rounded-sm" data-testid="monthly-chart-card">
           <div className="flex items-baseline justify-between mb-4">
-            <h2 className="font-display font-bold text-lg text-zinc-950">Monthly spend</h2>
-            <span className="text-xs font-mono text-zinc-500">USD</span>
+            <h2 className="font-display font-bold text-lg text-zinc-950">Monthly activity</h2>
+            <span className="text-xs font-mono text-zinc-500">
+              {mixedCurrency ? `${currency} only` : currency}
+            </span>
           </div>
           {monthly.length === 0 ? (
             <div className="h-48 flex items-center justify-center text-sm text-zinc-500">No data yet — create an expense to start tracking.</div>
@@ -78,7 +99,10 @@ export default function DashboardPage() {
                 <CartesianGrid stroke="#E4E4E7" vertical={false} />
                 <XAxis dataKey="month" stroke="#A1A1AA" fontSize={11} tickLine={false} axisLine={false} />
                 <YAxis stroke="#A1A1AA" fontSize={11} tickLine={false} axisLine={false} />
-                <Tooltip contentStyle={{ border: "1px solid #E4E4E7", borderRadius: 2, fontSize: 12 }} />
+                <Tooltip
+                  formatter={(value) => [formatMoney(value, currency), "Total"]}
+                  contentStyle={{ border: "1px solid #E4E4E7", borderRadius: 2, fontSize: 12 }}
+                />
                 <Bar dataKey="total" fill="#0055FF" radius={[2, 2, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
@@ -140,7 +164,7 @@ export default function DashboardPage() {
                   <td className="px-6 py-2.5 text-zinc-950">{e.description}</td>
                   <td className="px-6 py-2.5 text-xs font-mono text-zinc-500">{e.splitType}</td>
                   <td className="px-6 py-2.5 text-right font-mono font-semibold text-zinc-950">
-                    {e.currency} {Number(e.amount).toFixed(2)}
+                    {formatMoney(e.amount, e.currency)}
                   </td>
                 </tr>
               ))}
@@ -152,7 +176,20 @@ export default function DashboardPage() {
   );
 }
 
-function KPI({ label, value, icon: Icon, accent, count }) {
+function buildMonthlyTotals(expenses) {
+  const totals = new Map();
+  for (const expense of expenses) {
+    const month = String(expense.expenseDate || "").slice(0, 7);
+    if (!month) continue;
+    totals.set(month, (totals.get(month) || 0) + Number(expense.amount || 0));
+  }
+
+  return [...totals.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([month, total]) => ({ month, total }));
+}
+
+function KPI({ label, value, icon: Icon, accent }) {
   return (
     <div className={`p-6 bg-white ${accent ? "" : ""}`}>
       <div className="flex items-center gap-2 text-xs uppercase tracking-wider text-zinc-500 mb-3">
@@ -160,7 +197,7 @@ function KPI({ label, value, icon: Icon, accent, count }) {
         <span>{label}</span>
       </div>
       <div className={`font-mono font-semibold text-3xl ${accent ? "text-[#0055FF]" : "text-zinc-950"}`}>
-        {count ? value : `$${Number(value || 0).toFixed(2)}`}
+        {value}
       </div>
     </div>
   );

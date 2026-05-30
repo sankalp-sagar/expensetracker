@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { settlementsApi } from "@/lib/services";
-import { userOptionLabel } from "@/lib/userDisplay";
+import { formatMoney, normalizeCurrency } from "@/lib/currency";
+import { settlementDraftFromBalances } from "@/lib/settlements";
+import { userDisplayName, userOptionLabel } from "@/lib/userDisplay";
 import {
   Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
@@ -12,12 +14,14 @@ export default function SettleUpDialog({
   group,
   currentUserId,
   suggestion,
+  balances = [],
   profilesByUserId = {},
   onSettled,
 }) {
   const [payerId, setPayerId] = useState("");
   const [payeeId, setPayeeId] = useState("");
   const [amount, setAmount] = useState("");
+  const [currency, setCurrency] = useState("USD");
   const [method, setMethod] = useState("CASH");
   const [saving, setSaving] = useState(false);
 
@@ -27,15 +31,23 @@ export default function SettleUpDialog({
         setPayerId(suggestion.from);
         setPayeeId(suggestion.to);
         setAmount(Number(suggestion.amount).toFixed(2));
+        setCurrency(normalizeCurrency(group?.defaultCurrency));
       } else {
-        setPayerId(currentUserId || "");
+        const draft = settlementDraftFromBalances(balances, currentUserId);
         const other = (group?.members || []).find((m) => m.userId !== currentUserId);
-        setPayeeId(other?.userId || "");
-        setAmount("");
+        setPayerId(draft?.debtorId || currentUserId || "");
+        setPayeeId(draft?.creditorId || other?.userId || "");
+        setAmount(draft ? Number(draft.amount).toFixed(2) : "");
+        setCurrency(normalizeCurrency(draft?.currency || group?.defaultCurrency));
       }
       setMethod("CASH");
     }
-  }, [open, suggestion, group, currentUserId]);
+  }, [open, suggestion, group, currentUserId, balances]);
+
+  const selectedCurrency = normalizeCurrency(currency || group?.defaultCurrency);
+  const summary = payerId && payeeId && amount
+    ? `${userDisplayName(payerId, profilesByUserId)} pays ${userDisplayName(payeeId, profilesByUserId)} ${formatMoney(amount, selectedCurrency)}`
+    : "";
 
   const submit = async (e) => {
     e.preventDefault();
@@ -51,7 +63,7 @@ export default function SettleUpDialog({
         payerId,
         payeeId,
         amount: Number(amount),
-        currency: group?.defaultCurrency || "USD",
+        currency: selectedCurrency,
         method,
       });
       toast.success("Settlement recorded");
@@ -69,8 +81,13 @@ export default function SettleUpDialog({
           <DialogTitle className="font-display">Record payment</DialogTitle>
         </DialogHeader>
         <form onSubmit={submit} className="space-y-3">
+          {summary && (
+            <div className="border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm text-zinc-700 rounded-sm" data-testid="settle-summary">
+              {summary}
+            </div>
+          )}
           <div>
-            <label className="block text-xs uppercase tracking-wider text-zinc-500 mb-1.5">Payer (from)</label>
+            <label className="block text-xs uppercase tracking-wider text-zinc-500 mb-1.5">Who paid</label>
             <select
               data-testid="settle-payer-select"
               value={payerId}
@@ -86,7 +103,7 @@ export default function SettleUpDialog({
             </select>
           </div>
           <div>
-            <label className="block text-xs uppercase tracking-wider text-zinc-500 mb-1.5">Payee (to)</label>
+            <label className="block text-xs uppercase tracking-wider text-zinc-500 mb-1.5">Who received</label>
             <select
               data-testid="settle-payee-select"
               value={payeeId}
@@ -103,7 +120,7 @@ export default function SettleUpDialog({
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs uppercase tracking-wider text-zinc-500 mb-1.5">Amount</label>
+              <label className="block text-xs uppercase tracking-wider text-zinc-500 mb-1.5">Amount ({selectedCurrency})</label>
               <input
                 data-testid="settle-amount"
                 type="number" step="0.01" min="0.01" required

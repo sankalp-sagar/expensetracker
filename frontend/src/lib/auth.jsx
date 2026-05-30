@@ -35,26 +35,43 @@ function userFromAccessToken(accessToken, fallbackUserId) {
 function getStoredUser() {
   const accessToken = localStorage.getItem("accessToken");
   const rawUser = localStorage.getItem("user");
+
+  if (accessToken) {
+    try {
+      const tokenUser = userFromAccessToken(accessToken);
+      let storedUser = null;
+
+      if (rawUser) {
+        try {
+          storedUser = JSON.parse(rawUser);
+        } catch {
+          localStorage.removeItem("user");
+        }
+      }
+
+      const user = storedUser?.userId === tokenUser.userId
+        ? { ...tokenUser, ...storedUser }
+        : tokenUser;
+      localStorage.setItem("user", JSON.stringify(user));
+      return user;
+    } catch {
+      localStorage.removeItem("accessToken");
+      localStorage.removeItem("refreshToken");
+      localStorage.removeItem("user");
+      return null;
+    }
+  }
+
   if (rawUser) {
     try {
       const storedUser = JSON.parse(rawUser);
-      if (storedUser?.email || !accessToken) return storedUser;
+      if (storedUser?.email) return storedUser;
     } catch {
       localStorage.removeItem("user");
     }
   }
 
-  if (!accessToken) return null;
-
-  try {
-    const user = userFromAccessToken(accessToken);
-    localStorage.setItem("user", JSON.stringify(user));
-    return user;
-  } catch {
-    localStorage.removeItem("accessToken");
-    localStorage.removeItem("refreshToken");
-    return null;
-  }
+  return null;
 }
 
 export function AuthProvider({ children }) {

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { expensesApi } from "@/lib/services";
+import { normalizeCurrency } from "@/lib/currency";
 import { userOptionLabel } from "@/lib/userDisplay";
 import {
   Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
@@ -37,6 +38,8 @@ export default function ExpenseFormDialog({
   const updateRow = (idx, key, val) =>
     setRows((rs) => rs.map((r, i) => (i === idx ? { ...r, [key]: val } : r)));
 
+  const currency = normalizeCurrency(group?.defaultCurrency);
+
   const submit = async (e) => {
     e.preventDefault();
     if (!amount || Number(amount) <= 0) return toast.error("Amount required");
@@ -47,7 +50,7 @@ export default function ExpenseFormDialog({
         payerId,
         description,
         amount: Number(amount),
-        currency: group.defaultCurrency || "USD",
+        currency,
         splitType,
         splits: rows.map((r) => ({
           userId: r.userId,
@@ -90,7 +93,7 @@ export default function ExpenseFormDialog({
               />
             </div>
             <div>
-              <label className="block text-xs uppercase tracking-wider text-zinc-500 mb-1.5">Amount</label>
+              <label className="block text-xs uppercase tracking-wider text-zinc-500 mb-1.5">Amount ({currency})</label>
               <input
                 data-testid="expense-amount"
                 type="number" step="0.01" min="0.01" required
@@ -132,7 +135,7 @@ export default function ExpenseFormDialog({
                       value={r.value}
                       onChange={(e) => updateRow(i, "value", e.target.value)}
                       className="w-24 px-2 py-1 border border-zinc-300 rounded-sm font-mono text-xs text-right focus:outline-none focus:border-[#0055FF]"
-                      placeholder={splitType === "PERCENTAGE" ? "%" : splitType === "SHARE" ? "weight" : "$"}
+                      placeholder={splitType === "PERCENTAGE" ? "%" : splitType === "SHARE" ? "weight" : currency}
                     />
                   )}
                 </li>
